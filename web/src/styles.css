@@ -160,3 +160,32 @@ input:not([type=checkbox]) { font: inherit; color: inherit; background: var(--bg
 .canvas-frame { flex: 1; width: 100%; min-height: 0; border: 0; background: var(--bg); }
 .tools { display: flex; gap: 6px; }
 .side-tools { flex-wrap: wrap; }
+
+/* quadro kanban */
+.board { flex: 1; min-height: 0; display: flex; align-items: flex-start; gap: 12px; padding: 12px; overflow: auto; }
+.lane { width: 280px; flex: none; max-height: 100%; display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; }
+.lane.lane-drop { outline: 2px solid var(--accent); }
+.lane.archive { opacity: .8; }
+.lane-head { display: flex; align-items: center; gap: 6px; padding: 8px 10px; cursor: grab; }
+.lane-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lane-head button { padding: 0 5px; opacity: .55; }
+.lane-head button:hover { opacity: 1; }
+.count { color: var(--muted); font-size: 12px; }
+.cards { display: flex; flex-direction: column; gap: 6px; padding: 0 8px 8px; overflow-y: auto; min-height: 24px; }
+.card { display: flex; align-items: flex-start; gap: 8px; padding: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; cursor: grab; }
+.card:hover { border-color: var(--accent); }
+.card.done .card-text { color: var(--muted); text-decoration: line-through; }
+.card input[type="checkbox"] { margin: 3px 0 0; flex: none; }
+.card-text { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; }
+.card-actions { display: none; flex-direction: column; }
+.card:hover .card-actions { display: flex; }
+.card-actions button { padding: 0 4px; opacity: .6; line-height: 1.3; }
+.card-actions button:hover { opacity: 1; }
+.card-input { flex: 1; width: 100%; resize: none; overflow: hidden; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; outline: none; }
+.add-card, .add-lane { padding: 6px 8px; color: var(--muted); border-radius: 6px; }
+.add-card:hover, .add-lane:hover { background: var(--bg-3); color: var(--fg); }
+.add-lane { flex: none; width: 160px; border: 1px dashed var(--line); }
+.drop-line { height: 3px; border-radius: 2px; background: var(--accent); margin: -2px 0; }
+.chip { display: inline-block; padding: 0 6px; margin: 0 1px; border-radius: 10px; background: var(--bg-3); font-size: 12px; line-height: 1.6; }
+.chip.tag { color: var(--accent); }
+.chip.date.late { background: var(--bad); color: #fff; }

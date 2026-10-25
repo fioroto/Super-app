@@ -3,6 +3,7 @@ import { Editor } from '../editor/Editor.tsx';
 import { Preview } from '../preview/Preview.tsx';
 import { DiagramDialog, diagramDialog, openDiagramDialog } from '../diagrams/mermaid/DiagramDialog.tsx';
 import { Canvas } from '../diagrams/canvas/Canvas.tsx';
+import { KanbanBoard } from '../kanban/Board.tsx';
 import { Dialog } from './Dialog.tsx';
 import { insertDrawing } from './insert.ts';
 import { QuickOpen } from './QuickOpen.tsx';
@@ -10,7 +11,7 @@ import { Tree } from './Tree.tsx';
 import { VaultPicker } from './VaultPicker.tsx';
 import { applyTheme, cycleTheme, theme } from './theme.ts';
 import {
-  activate, active, activePath, boot, closeFile, docs, error, keepMine, mode, newDrawing, newFolder, newNote, openQuick, picker, save, takeDisk, tree, vault,
+  activate, active, activePath, boot, closeFile, docs, error, keepMine, mode, newBoard, newDrawing, newFolder, newNote, openQuick, picker, save, takeDisk, toggleRaw, tree, vault,
 } from './store.ts';
 import { api } from '../api/client.ts';
 
@@ -33,7 +34,8 @@ export function App() {
   if (vault.value === null) return <VaultPicker />;
 
   const d = active.value;
-  const text = d && (d.kind === 'md' || d.kind === 'text');
+  const board = d?.kind === 'kanban' && !d.raw;
+  const text = d && (d.kind === 'md' || d.kind === 'text' || (d.kind === 'kanban' && d.raw));
   return (
     <div class="app">
       <aside class="sidebar">
@@ -41,6 +43,7 @@ export function App() {
           <strong title={vault.value.root}>{vault.value.name}</strong>
           <span class="side-tools">
             <button class="btn" onClick={newNote} title="Nova nota">+ Nota</button>
+            <button class="btn" onClick={newBoard} title="Novo quadro kanban">+ Quadro</button>
             <button class="btn" onClick={newDrawing} title="Novo desenho livre">+ Desenho</button>
             <button class="btn" onClick={newFolder} title="Nova pasta">+ Pasta</button>
           </span>
@@ -80,6 +83,12 @@ export function App() {
                   ))}
                 </span>
               )}
+              {d.kind === 'kanban' && (
+                <span class="seg">
+                  <button class={!d.raw ? 'on' : ''} onClick={() => d.raw && toggleRaw(d.path)}>Quadro</button>
+                  <button class={d.raw ? 'on' : ''} onClick={() => !d.raw && toggleRaw(d.path)}>Texto</button>
+                </span>
+              )}
               <span class={`status ${d.state}`}>{STATE_LABEL[d.state]}</span>
             </header>
 
@@ -92,7 +101,9 @@ export function App() {
             )}
             {d.missing && <div class="banner"><span>O arquivo foi removido do disco. Salvar vai recriá-lo.</span></div>}
 
-            {text ? (
+            {board ? (
+              <KanbanBoard path={d.path} text={d.text} />
+            ) : text ? (
               <div class={`panes ${d.kind === 'md' ? mode.value : 'editor'}`}>
                 <div class="pane-edit"><Editor path={d.path} text={d.text} rev={d.rev} /></div>
                 {d.kind === 'md' && mode.value !== 'editor' && <div class="pane-view"><Preview path={d.path} text={d.text} /></div>}

@@ -1,4 +1,4 @@
-export type Kind = 'md' | 'text' | 'image' | 'canvas' | 'other';
+export type Kind = 'md' | 'text' | 'image' | 'canvas' | 'kanban' | 'other';
 
 const IMAGE = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i;
 const TEXT = /\.(md|markdown|txt|json|ya?ml|csv|log)$/i;

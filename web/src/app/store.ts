@@ -3,6 +3,7 @@ import { api, ApiError, type TreeNode, type VaultInfo } from '../api/client.ts';
 import { basename, dirname, join, kindOf, sanitizePath, type Kind } from './files.ts';
 import { ask, confirmBox } from './dialog.ts';
 import { emptyScene, serializeDrawing } from '../diagrams/canvas/excalidrawMd.ts';
+import { emptyBoardText, isKanban } from '../kanban/kanbanMd.ts';
 
 /** undefined = carregando; null = nenhuma pasta aberta. */
 export const vault = signal<VaultInfo | null | undefined>(undefined);
@@ -33,6 +34,8 @@ export interface Doc {
   rev: number;
   disk?: { content: string; hash: string };
   missing?: boolean;
+  /** Quadro mostrado como texto Markdown em vez de quadro. */
+  raw?: boolean;
 }
 
 export const docs = signal<Doc[]>([]);
@@ -81,7 +84,8 @@ export async function openFile(path: string): Promise<void> {
     await flushers.get(activePath.value ?? '')?.();
     if (kind === 'md' || kind === 'text' || kind === 'canvas') {
       const f = await api.read(path);
-      docs.value = [...docs.value, { path, kind, text: f.content, hash: f.hash, state: 'ok', rev: 0 }];
+      const real: Kind = kind === 'md' && isKanban(f.content) ? 'kanban' : kind;
+      docs.value = [...docs.value, { path, kind: real, text: f.content, hash: f.hash, state: 'ok', rev: 0 }];
     } else {
       docs.value = [...docs.value, { path, kind, text: '', hash: null, state: 'ok', rev: 0 }];
     }
@@ -180,7 +184,7 @@ function refreshTreeSoon(): Promise<void> | void {
 
 async function checkOpenDoc(path: string): Promise<void> {
   const d = find(path);
-  if (!d || (d.kind !== 'md' && d.kind !== 'text' && d.kind !== 'canvas')) return;
+  if (!d || d.kind === 'image' || d.kind === 'other') return;
   try {
     const f = await api.read(path);
     if (f.hash === d.hash) return; // eco do nosso próprio salvamento
@@ -249,6 +253,24 @@ export async function newDrawing(): Promise<void> {
   const path = join(selectedDir.value, `${base}.excalidraw.md`);
   try {
     await api.write(path, serializeDrawing(emptyScene()), null);
+    await refreshTree();
+    await openFile(path);
+  } catch (e) {
+    fail(e instanceof ApiError && e.conflict ? new Error('Já existe um arquivo com esse nome.') : e);
+  }
+}
+
+export function toggleRaw(path: string): void {
+  patch(path, (d) => ({ raw: !d.raw }));
+}
+
+export async function newBoard(): Promise<void> {
+  const name = await ask('Nome do quadro', 'quadro');
+  const clean = name ? sanitizePath(name) : '';
+  if (!clean) return;
+  const path = join(selectedDir.value, /\.md$/i.test(clean) ? clean : `${clean}.md`);
+  try {
+    await api.write(path, emptyBoardText(), null);
     await refreshTree();
     await openFile(path);
   } catch (e) {
