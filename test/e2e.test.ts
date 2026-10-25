@@ -2,7 +2,7 @@ import { mkdir, readFile, readdir, rename as fsRename, stat, writeFile } from 'n
 import path from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { launch, newContext, startApp, type App } from './helpers.ts';
+import { launch, startApp, withPage, type App } from './helpers.ts';
 
 let browser: Browser;
 beforeAll(async () => {
@@ -10,19 +10,7 @@ beforeAll(async () => {
 });
 afterAll(() => browser?.close());
 
-async function withPage(files: Record<string, string>, fn: (page: Page, app: App) => Promise<void>) {
-  const app = await startApp(files);
-  const ctx = await newContext(browser, app);
-  try {
-    const page = await ctx.newPage();
-    await page.goto(app.base);
-    await page.locator('.side-head').waitFor();
-    await fn(page, app);
-  } finally {
-    await ctx.close();
-    await app.close();
-  }
-}
+const withPageIn = (files: Record<string, string>, fn: (page: Page, app: App) => Promise<void>) => withPage(browser, files, fn);
 
 const disk = (app: App, rel: string) => readFile(path.join(app.vault, rel), 'utf8');
 const diskNow = (app: App, rel: string) => () => disk(app, rel).catch(() => null);
@@ -32,7 +20,7 @@ const dialogInput = (page: Page, text: string) => page.locator('.dialog input').
 
 describe('abrir, editar e salvar', () => {
   it('abre uma nota, mostra o preview e grava o que foi digitado', async () => {
-    await withPage({ 'notas/a.md': '# Título\n\ntexto\n' }, async (page, app) => {
+    await withPageIn({ 'notas/a.md': '# Título\n\ntexto\n' }, async (page, app) => {
       await openNote(page, 'a.md');
       await expect.poll(() => editor(page).innerText()).toContain('# Título');
       await expect.poll(() => page.locator('.preview h1').innerText()).toBe('Título');
@@ -47,7 +35,7 @@ describe('abrir, editar e salvar', () => {
   });
 
   it('Enter continua a lista e Enter num item vazio encerra', async () => {
-    await withPage({ 'l.md': '- um' }, async (page, app) => {
+    await withPageIn({ 'l.md': '- um' }, async (page, app) => {
       await openNote(page, 'l.md');
       await editor(page).click();
       await page.keyboard.press('Control+End');
@@ -60,7 +48,7 @@ describe('abrir, editar e salvar', () => {
   });
 
   it('troca de aba mantém o texto de cada nota e fecha a aba', async () => {
-    await withPage({ 'a.md': 'AAA\n', 'b.md': 'BBB\n' }, async (page) => {
+    await withPageIn({ 'a.md': 'AAA\n', 'b.md': 'BBB\n' }, async (page) => {
       await openNote(page, 'a.md');
       await openNote(page, 'b.md');
       await expect.poll(() => page.locator('.tab').count()).toBe(2);
@@ -76,7 +64,7 @@ describe('abrir, editar e salvar', () => {
 
 describe('mudanças feitas por outra ferramenta', () => {
   it('recarrega em silêncio quando não há edição pendente', async () => {
-    await withPage({ 'a.md': 'antes\n' }, async (page, app) => {
+    await withPageIn({ 'a.md': 'antes\n' }, async (page, app) => {
       await openNote(page, 'a.md');
       await expect.poll(() => editor(page).innerText()).toContain('antes');
       await writeFile(path.join(app.vault, 'a.md'), 'depois, por fora\n');
@@ -86,7 +74,7 @@ describe('mudanças feitas por outra ferramenta', () => {
   });
 
   it('com edição pendente mostra o conflito; "carregar do disco" descarta a minha', async () => {
-    await withPage({ 'a.md': 'base\n' }, async (page, app) => {
+    await withPageIn({ 'a.md': 'base\n' }, async (page, app) => {
       await openNote(page, 'a.md');
       await editor(page).click();
       // Edita e muda o disco antes do autosave (800 ms) disparar.
@@ -101,7 +89,7 @@ describe('mudanças feitas por outra ferramenta', () => {
   });
 
   it('com edição pendente, "manter a minha" sobrescreve o disco', async () => {
-    await withPage({ 'a.md': 'base\n' }, async (page, app) => {
+    await withPageIn({ 'a.md': 'base\n' }, async (page, app) => {
       await openNote(page, 'a.md');
       await editor(page).click();
       await page.keyboard.type('minha ');
@@ -113,7 +101,7 @@ describe('mudanças feitas por outra ferramenta', () => {
   });
 
   it('arquivo criado por fora aparece na árvore', async () => {
-    await withPage({}, async (page, app) => {
+    await withPageIn({}, async (page, app) => {
       await mkdir(path.join(app.vault, 'novas'));
       await writeFile(path.join(app.vault, 'novas/x.md'), 'x');
       await expect.poll(() => page.locator('.tree-item', { hasText: 'novas' }).count(), { timeout: 5000 }).toBe(1);
@@ -123,7 +111,7 @@ describe('mudanças feitas por outra ferramenta', () => {
 
 describe('arquivos', () => {
   it('cria nota (nome higienizado), renomeia e exclui para a lixeira', async () => {
-    await withPage({}, async (page, app) => {
+    await withPageIn({}, async (page, app) => {
       await page.getByRole('button', { name: '+ Nota' }).click();
       await dialogInput(page, 'ata: reunião?');
       await expect.poll(diskNow(app, 'ata- reunião-.md'), { timeout: 5000 }).toBe('');
@@ -146,7 +134,7 @@ describe('arquivos', () => {
   });
 
   it('cria nota dentro da pasta selecionada', async () => {
-    await withPage({ 'pasta/x.md': 'x' }, async (page, app) => {
+    await withPageIn({ 'pasta/x.md': 'x' }, async (page, app) => {
       await page.locator('.tree-item', { hasText: 'pasta' }).click();
       await page.getByRole('button', { name: '+ Nota' }).click();
       await dialogInput(page, 'dentro');
@@ -155,7 +143,7 @@ describe('arquivos', () => {
   });
 
   it('Ctrl+P abre arquivo pelo nome', async () => {
-    await withPage({ 'projetos/roadmap.md': 'R', 'outro.md': 'O' }, async (page) => {
+    await withPageIn({ 'projetos/roadmap.md': 'R', 'outro.md': 'O' }, async (page) => {
       await page.keyboard.press('Control+p');
       await page.locator('.quick input').fill('rdmp');
       await expect.poll(() => page.locator('.quick li.sel').innerText()).toContain('roadmap.md');
@@ -169,7 +157,7 @@ describe('arquivos', () => {
 describe('preview', () => {
   it('abre link entre notas e mostra imagem do vault', async () => {
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64');
-    await withPage({ 'notas/a.md': '[ir](b.md)\n\n![foto](../anexos/f%201.png)\n', 'notas/b.md': 'BBB\n' }, async (page, app) => {
+    await withPageIn({ 'notas/a.md': '[ir](b.md)\n\n![foto](../anexos/f%201.png)\n', 'notas/b.md': 'BBB\n' }, async (page, app) => {
       await mkdir(path.join(app.vault, 'anexos'));
       await writeFile(path.join(app.vault, 'anexos/f 1.png'), png);
       await openNote(page, 'a.md');
@@ -182,7 +170,7 @@ describe('preview', () => {
 
   it('não executa HTML perigoso nem busca imagem externa', async () => {
     const src = '<img src=x onerror="window.__pwned=1">\n\n<script>window.__pwned=1</script>\n\n![e](https://exemplo.com/p.png)\n';
-    await withPage({ 'x.md': src }, async (page) => {
+    await withPageIn({ 'x.md': src }, async (page) => {
       const requests: string[] = [];
       page.on('request', (r) => requests.push(r.url()));
       await openNote(page, 'x.md');
@@ -194,7 +182,7 @@ describe('preview', () => {
   });
 
   it('colar imagem salva em anexos/ e insere o link relativo', async () => {
-    await withPage({ 'notas/a.md': '' }, async (page, app) => {
+    await withPageIn({ 'notas/a.md': '' }, async (page, app) => {
       await openNote(page, 'a.md');
       await editor(page).click();
       await page.evaluate(() => {
@@ -211,7 +199,7 @@ describe('preview', () => {
 describe('uso de memória', () => {
   it('nota de 1.000 linhas aberta usa no máximo 30 MB de heap JS', async () => {
     const lines = Array.from({ length: 1000 }, (_, i) => `## Seção ${i}\n\nLinha de texto com **negrito**, \`código\` e [link](https://x.com) número ${i}.\n`).join('\n');
-    await withPage({ 'grande.md': lines }, async (page) => {
+    await withPageIn({ 'grande.md': lines }, async (page) => {
       await openNote(page, 'grande.md');
       await expect.poll(() => page.locator('.preview h2').count()).toBeGreaterThan(900);
       const cdp = await page.context().newCDPSession(page);

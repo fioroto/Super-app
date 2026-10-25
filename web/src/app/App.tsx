@@ -1,6 +1,7 @@
 import { useEffect } from 'preact/hooks';
 import { Editor } from '../editor/Editor.tsx';
 import { Preview } from '../preview/Preview.tsx';
+import { DiagramDialog, diagramDialog, openDiagramDialog } from '../diagrams/mermaid/DiagramDialog.tsx';
 import { Dialog } from './Dialog.tsx';
 import { QuickOpen } from './QuickOpen.tsx';
 import { Tree } from './Tree.tsx';
@@ -63,6 +64,7 @@ export function App() {
           <>
             <header class="bar">
               <span class="muted">{d.path}</span>
+              {text && d.kind === 'md' && <button class="btn" onClick={openDiagramDialog} title="Inserir ou editar diagrama Mermaid">Diagrama</button>}
               {text && d.kind === 'md' && (
                 <span class="seg">
                   {(['editor', 'split', 'preview'] as const).map((m) => (
@@ -100,6 +102,7 @@ export function App() {
       </section>
 
       {quickOpen.value && <QuickOpen />}
+      {diagramDialog.value && <DiagramDialog key={diagramDialog.value.from ?? -1} />}
       <Dialog />
     </div>
   );

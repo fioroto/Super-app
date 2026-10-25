@@ -8,6 +8,18 @@ const SCHEME = /^([a-z][a-z0-9+.-]*:|\/\/)/i;
 
 let notePath = '';
 
+const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// Blocos ```mermaid viram um marcador; o preview troca o marcador pelo desenho.
+marked.use({
+  renderer: {
+    code({ text, lang }) {
+      if (lang?.trim().split(/\s/)[0] === 'mermaid') return `<pre class="mermaid-src">${escapeHtml(text)}</pre>\n`;
+      return false;
+    },
+  },
+});
+
 // Roda em cada elemento depois da limpeza: aponta imagens e links relativos para o vault.
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   if (node instanceof HTMLImageElement) {

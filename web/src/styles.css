@@ -136,3 +136,22 @@ input:not([type=checkbox]) { font: inherit; color: inherit; background: var(--bg
   .panes.split { grid-template-columns: 1fr; }
   .panes.split .pane-view { display: none; }
 }
+
+/* diagramas mermaid */
+.mermaid-out { text-align: center; overflow: auto; margin: .8em 0; }
+.mermaid-out svg { max-width: 100%; height: auto; }
+.mermaid-out.stale { opacity: .45; }
+.preview pre.mermaid-src.loading { opacity: .45; }
+.mermaid-error { border: 1px solid var(--bad); border-radius: 6px; padding: 8px 12px; margin: .8em 0; color: var(--bad); }
+.mermaid-error pre { margin: 6px 0 0; background: none; border: 0; padding: 0; white-space: pre-wrap; color: inherit; }
+
+/* editor de diagrama */
+.dialog.diagram { width: min(1000px, 94vw); display: flex; flex-direction: column; gap: 10px; }
+.diagram header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.diagram select { padding: 4px 8px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; }
+.diagram-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: min(60vh, 520px); }
+.diagram-body textarea { resize: none; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); font: 13px/1.6 var(--mono); tab-size: 2; }
+.diagram-view { overflow: auto; border: 1px solid var(--line); border-radius: 4px; padding: 10px; background: var(--bg-2); }
+.diagram .actions { display: flex; align-items: center; gap: 8px; margin: 0; }
+.diagram .actions .muted { flex: 1; font-size: 12px; }
+@media (max-width: 800px) { .diagram-body { grid-template-columns: 1fr; } }

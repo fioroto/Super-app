@@ -30,6 +30,10 @@ const theme = EditorView.theme({
   '.cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': { backgroundColor: 'var(--sel)' },
 });
 
+let activeView: EditorView | undefined;
+/** O editor em uso, para recursos de fora (inserir diagrama) escreverem no texto. */
+export const getView = (): EditorView | undefined => activeView;
+
 interface Cached { state: EditorState; rev: number }
 const cache = new Map<string, Cached>();
 
@@ -60,10 +64,10 @@ export function Editor({ path, text, rev }: { path: string; text: string; rev: n
 
   // Uma única instância; trocar de aba troca o estado (mantém desfazer por aba).
   useEffect(() => {
-    view.current = new EditorView({ parent: host.current!, state: makeState(text) });
+    view.current = activeView = new EditorView({ parent: host.current!, state: makeState(text) });
     return () => {
       view.current?.destroy();
-      view.current = undefined;
+      view.current = activeView = undefined;
     };
   }, []);
 

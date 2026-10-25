@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { chromium, type Browser, type BrowserContext } from 'playwright-core';
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { startServer, type Running } from '../server/src/server.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -52,4 +52,19 @@ export async function newContext(browser: Browser, app: App): Promise<BrowserCon
   ctx.setDefaultTimeout(5000);
   await ctx.addCookies([{ name: 'sa', value: app.run.token, url: app.base }]);
   return ctx;
+}
+
+/** Sobe o app com os arquivos dados, abre a página já autenticada e limpa tudo no fim. */
+export async function withPage(browser: Browser, files: Record<string, string>, fn: (page: Page, app: App) => Promise<void>): Promise<void> {
+  const app = await startApp(files);
+  const ctx = await newContext(browser, app);
+  try {
+    const page = await ctx.newPage();
+    await page.goto(app.base);
+    await page.locator('.side-head').waitFor();
+    await fn(page, app);
+  } finally {
+    await ctx.close();
+    await app.close();
+  }
 }

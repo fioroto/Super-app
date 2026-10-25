@@ -13,6 +13,7 @@
     "@preact/signals": "^2.11.3",
     "dompurify": "^3.4.17",
     "marked": "^18.1.1",
+    "mermaid": "^12.2.0",
     "preact": "^11.0.2"
   }
 }
