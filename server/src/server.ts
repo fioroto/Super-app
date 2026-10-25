@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import {
   PathError, cookieToken, hostAllowed, newToken, originAllowed, tokenValid,
 } from './security.ts';
-import { BadVersion, History } from './history.ts';
+import { BadName, BadVersion, History } from './history.ts';
 import { ConflictError, NotFoundError, Vault } from './vault.ts';
 import { watchVault, type VaultWatcher } from './watcher.ts';
 
@@ -217,6 +217,16 @@ export async function startServer(opts: Options): Promise<Running> {
         await history?.idle();
         return json(res, 200, restored);
       }
+      case 'POST /api/history/mark': {
+        const body = await readJson(req);
+        const version = await needHistory().mark(str(body.path, 'path'), str(body.name, 'name'));
+        return json(res, 200, { version });
+      }
+      case 'POST /api/history/label': {
+        const body = await readJson(req);
+        await needHistory().label(str(body.path, 'path'), str(body.id, 'id'), str(body.name, 'name'));
+        return json(res, 200, { ok: true });
+      }
       case 'GET /api/tree':
         return json(res, 200, await needVault().tree());
       case 'GET /api/file': {
@@ -306,7 +316,7 @@ export async function startServer(opts: Options): Promise<Running> {
       if (e instanceof HttpError) return json(res, e.status, { error: e.message, ...e.extra });
       if (e instanceof ConflictError) return json(res, 409, { error: e.message, code: 'conflict', currentHash: e.currentHash });
       if (e instanceof NotFoundError || e instanceof BadVersion) return json(res, 404, { error: e.message });
-      if (e instanceof PathError) return json(res, 400, { error: e.message });
+      if (e instanceof PathError || e instanceof BadName) return json(res, 400, { error: e.message });
       console.error(e);
       json(res, 500, { error: 'erro interno' });
     }

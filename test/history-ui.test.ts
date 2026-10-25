@@ -96,6 +96,44 @@ describe('histórico na interface', () => {
     });
   });
 
+  it('marcos: marcar versão, comparar dois marcos e tirar o nome', async () => {
+    await withPage(browser, { 'a.md': 'Texto inicial.\n' }, async (page, app) => {
+      await open(page, 'a.md');
+      const marcar = async (name: string) => {
+        await page.getByRole('button', { name: 'Marcar versão…' }).click();
+        await page.locator('.dialog input').fill(name);
+        await page.keyboard.press('Enter');
+      };
+      await page.getByRole('button', { name: 'Histórico' }).click();
+      await marcar('Enviado ao jurídico');
+      await expect.poll(() => page.locator('.versions li.marco').allInnerTexts()).toEqual([expect.stringContaining('⚑ Enviado ao jurídico')]);
+      await page.getByRole('button', { name: 'Fechar' }).click();
+
+      await page.locator('.cm-content').click();
+      await page.keyboard.press('Control+End');
+      await page.keyboard.type('Parágrafo revisado.');
+      await expect.poll(diskOf(app, 'a.md'), { timeout: 5000 }).toBe('Texto inicial.\nParágrafo revisado.');
+      await page.getByRole('button', { name: 'Histórico' }).click();
+      await marcar('Revisado');
+      await expect.poll(() => page.locator('.versions li.marco').count()).toBe(2);
+      expect(await page.locator('.versions li.sel').innerText()).toContain('Revisado');
+
+      // O marco antigo contra o novo: dá para comparar, mas não para voltar trecho (nenhum lado é o agora).
+      await page.locator('.versions li', { hasText: 'Enviado ao jurídico' }).click();
+      await page.locator('.compare-bar select').selectOption({ index: 1 });
+      await expect.poll(() => page.locator('mark.a').allInnerTexts()).toEqual(['Parágrafo revisado.']);
+      expect(await page.getByRole('button', { name: 'Voltar este trecho' }).count()).toBe(0);
+      await page.locator('.compare-bar select').selectOption('');
+      await expect.poll(() => page.getByRole('button', { name: 'Voltar este trecho' }).count()).toBe(1);
+
+      // Tirar o nome: o marco vira versão comum.
+      await page.locator('.versions li', { hasText: 'Revisado' }).getByRole('button', { name: /^Nome da versão/ }).click();
+      await page.locator('.dialog input').fill('');
+      await page.keyboard.press('Enter');
+      await expect.poll(() => page.locator('.versions li.marco').count()).toBe(1);
+    });
+  });
+
   it('nota sem versões anteriores explica por quê', async () => {
     await withPage(browser, { 'nova.md': 'x\n' }, async (page) => {
       await open(page, 'nova.md');

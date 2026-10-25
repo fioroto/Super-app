@@ -109,6 +109,63 @@ describe('histórico de versões', () => {
     expect(await Promise.all(list.map((v) => version('a.md', v.id)))).toEqual(['dia20', 'dia4']);
   });
 
+  it('marco: guarda o estado atual com nome, mesmo dentro dos 5 minutos, sem cópia repetida', async () => {
+    await setup({ 'a.md': 'v1' });
+    await put('a.md', 'versão dois do texto'); // guarda v1
+    at(1 * MIN);
+    const r = await app.fetch('/api/history/mark', { method: 'POST', body: JSON.stringify({ path: 'a.md', name: '  Enviado   ao jurídico ' }) });
+    expect(r.status).toBe(200);
+    const { version: marco } = await r.json() as { version: { id: string; name: string; words: number } };
+    expect(marco.name).toBe('Enviado ao jurídico');
+    expect(marco.words).toBe(4);
+    expect(await version('a.md', marco.id)).toBe('versão dois do texto');
+
+    // Marcar de novo sem mudar nada reaproveita a mesma cópia.
+    at(2 * MIN);
+    const again = await (await app.fetch('/api/history/mark', { method: 'POST', body: JSON.stringify({ path: 'a.md', name: 'Aprovado' }) })).json() as { version: { id: string } };
+    expect(again.version.id).toBe(marco.id);
+    const list = await versions('a.md') as { id: string; name?: string; words: number }[];
+    expect(list.map((v) => [v.name ?? null, v.words])).toEqual([['Aprovado', 4], [null, 1]]);
+
+    // Salvar depois do marco não duplica o estado marcado.
+    at(10 * MIN); await put('a.md', 'três');
+    expect((await versions('a.md')).length).toBe(2);
+    expect(JSON.parse(await readFile(path.join(app.vault, '.superapp/history/a.md/marcos.json'), 'utf8'))).toEqual({ [marco.id]: 'Aprovado' });
+  });
+
+  it('marco nunca sai na limpeza; sem nome, volta a seguir a regra', async () => {
+    await setup({ 'a.md': 'inicio' });
+    const marco = (await (await app.fetch('/api/history/mark', { method: 'POST', body: JSON.stringify({ path: 'a.md', name: 'Versão 1' }) })).json()).version as { id: string };
+    at(1 * DAY); await put('a.md', 'dia1');
+    at(100 * DAY); await put('a.md', 'dia100');
+    expect((await versions('a.md')).map((v) => v.id)).toContain(marco.id);
+
+    const off = await app.fetch('/api/history/label', { method: 'POST', body: JSON.stringify({ path: 'a.md', id: marco.id, name: '' }) });
+    expect(off.status).toBe(200);
+    at(101 * DAY); await put('a.md', 'dia101');
+    expect((await versions('a.md')).map((v) => v.id)).not.toContain(marco.id);
+  });
+
+  it('nome: dá, troca e recusa o que não serve', async () => {
+    await setup({ 'a.md': 'x' });
+    await put('a.md', 'y');
+    const [v] = await versions('a.md');
+    const label = (body: object) => app.fetch('/api/history/label', { method: 'POST', body: JSON.stringify({ path: 'a.md', ...body }) });
+    expect((await label({ id: v!.id, name: 'Rascunho' })).status).toBe(200);
+    expect(((await versions('a.md'))[0] as { name?: string }).name).toBe('Rascunho');
+    expect((await label({ id: '2026-01-01T00-00-00-000Z', name: 'x' })).status).toBe(404);
+    expect((await label({ id: v!.id, name: 'a'.repeat(121) })).status).toBe(400);
+    expect((await label({ id: v!.id, name: 'com\u0007sino' })).status).toBe(400);
+    expect((await app.fetch('/api/history/mark', { method: 'POST', body: JSON.stringify({ path: 'a.md', name: '   ' }) })).status).toBe(400);
+  });
+
+  it('renomear o arquivo leva os marcos', async () => {
+    await setup({ 'a.md': 'x' });
+    await app.fetch('/api/history/mark', { method: 'POST', body: JSON.stringify({ path: 'a.md', name: 'Marco' }) });
+    await app.fetch('/api/rename', { method: 'POST', body: JSON.stringify({ from: 'a.md', to: 'b.md' }) });
+    expect(((await versions('b.md'))[0] as { name?: string }).name).toBe('Marco');
+  });
+
   it('recusa caminho fora do vault e versão inventada', async () => {
     await setup({ 'a.md': 'x' });
     expect((await app.fetch('/api/history?path=../../etc')).status).toBe(400);

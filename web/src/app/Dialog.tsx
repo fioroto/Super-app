@@ -7,7 +7,8 @@ export function Dialog() {
   useEffect(() => { if (d?.kind === 'ask') { input.current?.focus(); input.current?.select(); } }, [d]);
   if (!d) return null;
 
-  const submit = () => d.done(d.kind === 'ask' ? input.current!.value.trim() || null : true);
+  // Vazio confirmado volta como '' (serve para tirar um nome); cancelar volta null.
+  const submit = () => d.done(d.kind === 'ask' ? input.current!.value.trim() : true);
   return (
     <div class="overlay" onMouseDown={(e) => e.target === e.currentTarget && d.done(null)}>
       <form class="dialog" onSubmit={(e) => { e.preventDefault(); submit(); }} onKeyDown={(e) => e.key === 'Escape' && d.done(null)}>
