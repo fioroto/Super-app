@@ -24,7 +24,14 @@ describe('histórico na interface', () => {
 
       await page.getByRole('button', { name: 'Histórico' }).click();
       await expect.poll(() => page.locator('.versions li').count()).toBe(1);
-      await page.locator('.diff-row').first().waitFor();
+      // As três linhas são um parágrafo só: aparece uma mudança, e só a palavra nova fica em destaque.
+      await page.locator('.pdiff-row.changed').first().waitFor();
+      expect(await page.locator('.pdiff-row.changed').count()).toBe(1);
+      expect(await page.locator('mark.a').allInnerTexts()).toEqual(['EDITADA']);
+      expect(await page.locator('mark.d').count()).toBe(0);
+      expect(await page.locator('.pdiff-sum').innerText()).toBe('+1 palavra · −0 · 1 parágrafo mudado');
+      // "Ver o Markdown" volta à comparação linha a linha.
+      await page.getByRole('button', { name: 'Ver o Markdown' }).click();
       expect(await page.locator('.diff-row pre.del').allInnerTexts()).toEqual(['linha 2']);
       expect(await page.locator('.diff-row pre.add').allInnerTexts()).toEqual(['linha 2 EDITADA']);
 
@@ -55,11 +62,10 @@ describe('histórico na interface', () => {
       await page.keyboard.type('minha ');
       await writeFile(path.join(app.vault, 'a.md'), 'versão externa\n');
       await page.getByRole('button', { name: 'Ver diferença' }).click();
-      await page.locator('.diff-row').first().waitFor();
-      const head = await page.locator('.diff-head').innerText();
-      expect(head).toContain('No disco');
-      expect(await page.locator('.diff-row pre.del').allInnerTexts()).toContain('versão externa');
-      expect(await page.locator('.diff-row pre.add').allInnerTexts()).toContain('base');
+      await page.locator('.pdiff-row.changed').first().waitFor();
+      expect(await page.locator('.pdiff-labels').innerText()).toContain('No disco');
+      expect(await page.locator('mark.d').allInnerTexts()).toEqual(['versão externa']);
+      expect(await page.locator('mark.a').allInnerTexts()).toEqual(['base minha']);
     });
   });
 });

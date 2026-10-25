@@ -133,7 +133,7 @@ export function App() {
               <div class="banner">
                 <span>Este arquivo mudou no disco enquanto você editava.</span>
                 <button class="btn" onClick={() => keepMine(d.path)}>Manter a minha</button>
-                <button class="btn" disabled={!d.disk} onClick={() => d.disk && (diffView.value = { title: `Diferença em ${d.path}`, left: d.disk.content, right: d.text, leftLabel: 'No disco', rightLabel: 'No editor (a minha)' })}>Ver diferença</button>
+                <button class="btn" disabled={!d.disk} onClick={() => d.disk && (diffView.value = { title: `Diferença em ${d.path}`, path: d.path, left: d.disk.content, right: d.text, leftLabel: 'No disco', rightLabel: 'No editor (a minha)' })}>Ver diferença</button>
                 <button class="btn" disabled={!d.disk} onClick={() => takeDisk(d.path)}>Carregar do disco</button>
               </div>
             )}

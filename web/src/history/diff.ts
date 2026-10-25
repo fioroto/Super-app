@@ -1,22 +1,33 @@
 export type Op = { t: '=' | '+' | '-'; line: string };
+/** Um passo da diferença por posição: '=' tem as duas posições, '-' só a de A, '+' só a de B. */
+export type Step = { t: '='; i: number; j: number } | { t: '-'; i: number } | { t: '+'; j: number };
 
 const MAX_EDITS = 1500;
 
 /** Diferença linha a linha (algoritmo de Myers), depois de tirar o começo e o fim iguais. */
 export function diffLines(a: string[], b: string[]): Op[] {
-  let start = 0;
-  while (start < a.length && start < b.length && a[start] === b[start]) start++;
-  let endA = a.length, endB = b.length;
-  while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) { endA--; endB--; }
-  const head = a.slice(0, start).map((line): Op => ({ t: '=', line }));
-  const tail = a.slice(endA).map((line): Op => ({ t: '=', line }));
-  return [...head, ...myers(a.slice(start, endA), b.slice(start, endB)), ...tail];
+  return diffSteps(a.length, b.length, (i, j) => a[i] === b[j]).map((s): Op => (s.t === '+' ? { t: '+', line: b[s.j]! } : { t: s.t, line: a[s.i]! }));
 }
 
-function myers(A: string[], B: string[]): Op[] {
-  const n = A.length, m = B.length;
-  if (!n) return B.map((line) => ({ t: '+', line }));
-  if (!m) return A.map((line) => ({ t: '-', line }));
+/** Myers sobre posições: serve para linhas, blocos ou palavras, com a igualdade que quem chama escolher. */
+export function diffSteps(n: number, m: number, eq: (i: number, j: number) => boolean): Step[] {
+  let start = 0;
+  while (start < n && start < m && eq(start, start)) start++;
+  let endA = n, endB = m;
+  while (endA > start && endB > start && eq(endA - 1, endB - 1)) { endA--; endB--; }
+  const out: Step[] = [];
+  for (let k = 0; k < start; k++) out.push({ t: '=', i: k, j: k });
+  out.push(...myers(start, endA, start, endB, eq));
+  for (let k = 0; k < n - endA; k++) out.push({ t: '=', i: endA + k, j: endB + k });
+  return out;
+}
+
+function myers(a0: number, a1: number, b0: number, b1: number, eq: (i: number, j: number) => boolean): Step[] {
+  const n = a1 - a0, m = b1 - b0;
+  const removed = () => Array.from({ length: n }, (_, k): Step => ({ t: '-', i: a0 + k }));
+  const added = () => Array.from({ length: m }, (_, k): Step => ({ t: '+', j: b0 + k }));
+  if (!n) return added();
+  if (!m) return removed();
 
   const maxD = Math.min(n + m, MAX_EDITS);
   const off = maxD + 1;
@@ -27,28 +38,28 @@ function myers(A: string[], B: string[]): Op[] {
     for (let k = -d; k <= d; k += 2) {
       let x = k === -d || (k !== d && V[off + k - 1]! < V[off + k + 1]!) ? V[off + k + 1]! : V[off + k - 1]! + 1;
       let y = x - k;
-      while (x < n && y < m && A[x] === B[y]) { x++; y++; }
+      while (x < n && y < m && eq(a0 + x, b0 + y)) { x++; y++; }
       V[off + k] = x;
-      if (x >= n && y >= m) return backtrack(A, B, trace, d, off);
+      if (x >= n && y >= m) return backtrack(n, m, trace, d, off, a0, b0);
     }
   }
   // Mudou demais para valer a pena alinhar: mostra tudo como trocado.
-  return [...A.map((line): Op => ({ t: '-', line })), ...B.map((line): Op => ({ t: '+', line }))];
+  return [...removed(), ...added()];
 }
 
-function backtrack(A: string[], B: string[], trace: Int32Array[], dEnd: number, off: number): Op[] {
-  const out: Op[] = [];
-  let x = A.length, y = B.length;
+function backtrack(n: number, m: number, trace: Int32Array[], dEnd: number, off: number, a0: number, b0: number): Step[] {
+  const out: Step[] = [];
+  let x = n, y = m;
   for (let d = dEnd; d > 0; d--) {
     const prev = trace[d]!;
     const k = x - y;
     const prevK = k === -d || (k !== d && prev[off + k - 1]! < prev[off + k + 1]!) ? k + 1 : k - 1;
     const prevX = prev[off + prevK]!;
     const prevY = prevX - prevK;
-    while (x > prevX && y > prevY) { out.push({ t: '=', line: A[x - 1]! }); x--; y--; }
-    if (x === prevX) { out.push({ t: '+', line: B[y - 1]! }); y--; } else { out.push({ t: '-', line: A[x - 1]! }); x--; }
+    while (x > prevX && y > prevY) { out.push({ t: '=', i: a0 + x - 1, j: b0 + y - 1 }); x--; y--; }
+    if (x === prevX) { out.push({ t: '+', j: b0 + y - 1 }); y--; } else { out.push({ t: '-', i: a0 + x - 1 }); x--; }
   }
-  while (x > 0 && y > 0) { out.push({ t: '=', line: A[x - 1]! }); x--; y--; }
+  while (x > 0 && y > 0) { out.push({ t: '=', i: a0 + x - 1, j: b0 + y - 1 }); x--; y--; }
   return out.reverse();
 }
 

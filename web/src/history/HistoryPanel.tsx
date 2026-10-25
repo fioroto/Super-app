@@ -3,6 +3,7 @@ import { api, type Version } from '../api/client.ts';
 import { basename } from '../app/files.ts';
 import { docs, error, historyFor, reloadFromDisk } from '../app/store.ts';
 import { DiffView } from './DiffView.tsx';
+import { ProseDiffView, proseMode } from './ProseDiffView.tsx';
 
 const when = (t: number) => new Date(t).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 const kb = (n: number) => (n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`);
@@ -58,7 +59,8 @@ export function HistoryPanel() {
             </ul>
             <div class="history-diff">
               {old === null ? <p class="muted pad">Carregando…</p> : (
-                <DiffView left={old} right={current} leftLabel="Versão escolhida" rightLabel="Atual (no editor)" />
+                proseMode(path) ? <ProseDiffView left={old} right={current} leftLabel="Versão escolhida" rightLabel="Atual (no editor)" path={path} />
+                  : <DiffView left={old} right={current} leftLabel="Versão escolhida" rightLabel="Atual (no editor)" />
               )}
             </div>
           </div>
