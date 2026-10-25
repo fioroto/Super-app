@@ -191,6 +191,8 @@ export async function reloadFromDisk(path: string): Promise<void> {
 /** Telas que carregam sob demanda: histórico de versões e comparação de textos. */
 export const historyFor = signal<string | null>(null);
 export const diffView = signal<{ title: string; left: string; right: string; leftLabel: string; rightLabel: string } | null>(null);
+/** Ferramentas avulsas (carregam sob demanda): comparar JSON e planilha para tabela Markdown. */
+export const tool = signal<'json' | 'sheet' | null>(null);
 
 export function keepMine(path: string): void {
   const d = find(path);
@@ -261,20 +263,25 @@ export function asText(path: string): void {
 
 // ---------- criar, renomear, excluir ----------
 
-export async function newNote(): Promise<void> {
-  const name = await ask('Nome da nota', 'sem-titulo');
-  if (!name) return;
+/** Pergunta o nome, cria a nota com o texto dado e abre. Devolve false se desistiu ou falhou. */
+export async function createNote(content = '', suggested = 'sem-titulo'): Promise<boolean> {
+  const name = await ask('Nome da nota', suggested);
+  if (!name) return false;
   const clean = sanitizePath(name);
-  if (!clean) return;
+  if (!clean) return false;
   const path = join(selectedDir.value, /\.[a-z0-9]+$/i.test(clean) ? clean : `${clean}.md`);
   try {
-    await api.write(path, '', null);
+    await api.write(path, content, null);
     await refreshTree();
     await openFile(path);
+    return true;
   } catch (e) {
     fail(e instanceof ApiError && e.conflict ? new Error('Já existe um arquivo com esse nome.') : e);
+    return false;
   }
 }
+
+export const newNote = (): Promise<boolean> => createNote();
 
 export async function newDrawing(): Promise<void> {
   const name = await ask('Nome do desenho', 'desenho');

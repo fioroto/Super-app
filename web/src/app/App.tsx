@@ -14,7 +14,7 @@ import { Tree } from './Tree.tsx';
 import { VaultPicker } from './VaultPicker.tsx';
 import { applyTheme, cycleTheme, theme } from './theme.ts';
 import {
-  activate, active, activePath, boot, closeFile, docs, error, diffView, historyFor, keepMine, mode, newBoard, newDrawing, newFolder, newNote, openQuick, picker, save, takeDisk, toggleRaw, tree, vault,
+  activate, active, activePath, boot, closeFile, docs, error, diffView, historyFor, keepMine, mode, newBoard, newDrawing, newFolder, newNote, openQuick, picker, save, takeDisk, tool, toggleRaw, tree, vault,
 } from './store.ts';
 import { api } from '../api/client.ts';
 
@@ -25,6 +25,11 @@ function LazyHistory() {
 function LazyDiff() {
   const m = useLazy(() => import('../history/DiffDialog.tsx'));
   return m ? <m.DiffDialog /> : null;
+}
+
+function LazyTool() {
+  const m = useLazy(() => import('../tools/ToolDialog.tsx'));
+  return m ? <m.ToolDialog /> : null;
 }
 
 /** Imprime só a nota: passa para o modo "Ler" e volta ao que estava. */
@@ -70,6 +75,10 @@ export function App() {
         </header>
         {tree.value && <Tree root={tree.value} />}
         <footer class="side-foot">
+          <div class="side-foot-tools">
+            <button onClick={() => (tool.value = 'json')} title="Comparar dois JSON pelo conteúdo">Comparar JSON</button>
+            <button onClick={() => (tool.value = 'sheet')} title="Transformar células copiadas de uma planilha em tabela Markdown">Planilha → MD</button>
+          </div>
           <button onClick={openQuick}>Buscar (Ctrl+P)</button>
           <button onClick={cycleTheme}>{THEME_LABEL[theme.value]}</button>
         </footer>
@@ -157,6 +166,7 @@ export function App() {
       {diagramDialog.value && <DiagramDialog key={diagramDialog.value.from ?? -1} />}
       {historyFor.value && <LazyHistory />}
       {diffView.value && <LazyDiff />}
+      {tool.value && <LazyTool />}
       <Dialog />
     </div>
   );
