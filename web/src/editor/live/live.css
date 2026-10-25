@@ -1,0 +1,270 @@
+/* Tipografia do editor */
+.cm-live .cm-scroller {
+  font: 16px/1.7 system-ui, "Segoe UI", sans-serif;
+  overflow: auto;
+}
+
+.cm-live .cm-content {
+  max-width: 80ch;
+  margin: 0 auto;
+  padding: 24px 32px;
+  caret-color: var(--fg);
+}
+
+.cm-live .cm-activeLine {
+  background: transparent;
+}
+
+/* Títulos */
+.cm-live .cm-live-h1,
+.cm-live .cm-live-h2,
+.cm-live .cm-live-h3,
+.cm-live .cm-live-h4,
+.cm-live .cm-live-h5,
+.cm-live .cm-live-h6 {
+  line-height: 1.25;
+  padding-top: .6em; /* o CodeMirror não mede margem de linha: use padding */
+}
+
+.cm-live .cm-live-h1 {
+  font-size: 2em;
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+}
+
+.cm-live .cm-live-h2 {
+  font-size: 1.55em;
+  font-weight: 700;
+}
+
+.cm-live .cm-live-h3 {
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.cm-live .cm-live-h4,
+.cm-live .cm-live-h5,
+.cm-live .cm-live-h6 {
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.cm-live .cm-live-h6 {
+  color: var(--muted);
+}
+
+/* Linhas de bloco */
+.cm-live .cm-live-dim {
+  color: var(--muted);
+  font-size: .85em;
+}
+
+.cm-live .cm-live-quote {
+  border-left: 3px solid var(--line);
+  padding-left: 12px;
+  color: var(--muted);
+}
+
+.cm-live .cm-live-codeblock {
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: .9em;
+  padding-left: 12px;
+  padding-right: 12px;
+  white-space: pre-wrap;
+}
+
+.cm-live .cm-live-codefence {
+  color: var(--muted);
+  font-size: .8em;
+}
+
+.cm-live .cm-live-fm {
+  background: var(--bg-2);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: .8em;
+  padding: 0 12px;
+}
+
+.cm-live .cm-live-html {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: .85em;
+}
+
+.cm-live .cm-live-table-src {
+  font-family: var(--mono);
+  font-size: .9em;
+  white-space: pre;
+}
+
+.cm-live .cm-live-li {
+  padding-left: 0;
+}
+
+/* Trechos inline */
+.cm-live .cm-live-strong {
+  font-weight: 700;
+}
+
+.cm-live .cm-live-em {
+  font-style: italic;
+}
+
+.cm-live .cm-live-strike,
+.cm-live .cm-live-done {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.cm-live .cm-live-code {
+  font-family: var(--mono);
+  font-size: .9em;
+  background: var(--bg-3);
+  padding: .1em .35em;
+  border-radius: 3px;
+}
+
+.cm-live .cm-live-link {
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cm-live .cm-live-olmark {
+  color: var(--muted);
+}
+
+/* Widgets */
+.cm-live .cm-live-bullet {
+  display: inline-block;
+  width: 1.2em;
+  text-align: center;
+  color: var(--muted);
+}
+
+.cm-live .cm-live-indent {
+  display: inline-block;
+}
+
+.cm-live .cm-live-check {
+  margin: 0 .5em 0 0;
+  vertical-align: middle;
+  cursor: pointer;
+  width: 1em;
+  height: 1em;
+}
+
+.cm-live .cm-live-hr {
+  display: block;
+  height: 1.6em;
+  background: linear-gradient(var(--line), var(--line)) center / 100% 1px no-repeat;
+}
+
+.cm-live .cm-live-img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cm-live .cm-live-img-blocked {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.cm-live .cm-live-block {
+  padding: .6em 0;
+  cursor: pointer;
+}
+
+.cm-live .cm-live-mermaid {
+  text-align: center;
+  overflow: auto;
+}
+
+.cm-live .cm-live-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.cm-live .cm-live-mermaid-error {
+  border: 1px solid var(--bad);
+  color: var(--bad);
+  padding: 8px 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+}
+
+.cm-live .cm-live-table table {
+  border-collapse: collapse;
+}
+
+.cm-live .cm-live-table th,
+.cm-live .cm-live-table td {
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+}
+
+.cm-live .cm-live-table th {
+  background: var(--bg-2);
+}
+
+/* Barra de formatação */
+.fmt-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.fmt-bar .fmt-group {
+  display: flex;
+  gap: 2px;
+}
+
+.fmt-bar .fmt-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  margin: 0 6px;
+}
+
+.fmt-bar button.fmt-btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  text-align: center;
+  color: var(--fg);
+}
+
+.fmt-bar button.fmt-btn:hover {
+  background: var(--bg-3);
+}
+
+.fmt-bar button.fmt-btn.on {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.fmt-bar button.fmt-btn:disabled {
+  opacity: .4;
+}
+
+.fmt-bar select.fmt-select {
+  height: 28px;
+  padding: 0 6px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  margin-right: 6px;
+}

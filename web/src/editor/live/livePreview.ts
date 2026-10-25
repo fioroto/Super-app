@@ -1,5 +1,7 @@
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
+import { liveInline, linkOpener } from './inline.ts';
+import './live.css';
 
 export interface LiveOptions {
   /** Caminho da nota aberta, para resolver imagens e links relativos. */
@@ -7,9 +9,11 @@ export interface LiveOptions {
 }
 
 /** Modo Documento: a formatação do Markdown aparece desenhada; o texto do arquivo não muda. */
-export function livePreview(_opts: LiveOptions): Extension {
+export function livePreview(opts: LiveOptions): Extension {
   return [
     EditorView.editorAttributes.of({ class: 'cm-live' }),
     EditorView.contentAttributes.of({ spellcheck: 'true', lang: 'pt-BR' }),
+    liveInline,
+    linkOpener(opts.notePath),
   ];
 }
