@@ -6,6 +6,8 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const watch = process.argv.includes('--watch');
+// O Vitest define NODE_ENV=test; sem isto o pacote levaria código de desenvolvimento e os números de peso mentiriam.
+if (!watch) process.env.NODE_ENV = 'production';
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
 if (!watch) await rm(path.join(root, 'dist'), { recursive: true, force: true });
