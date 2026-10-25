@@ -17,7 +17,8 @@
     "size": "node scripts/check-size.mjs",
     "typecheck": "tsc -p server && tsc -p web",
     "test": "vitest run",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "contrast": "node scripts/check-contrast.mjs"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",

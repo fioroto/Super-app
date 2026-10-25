@@ -25,6 +25,7 @@ jobs:
       - run: npm run package
 
       - run: npm run size
+      - run: npm run contrast
 
       - uses: actions/upload-artifact@v4
         with:

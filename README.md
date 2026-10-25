@@ -62,6 +62,10 @@ Tudo na pasta que você escolheu. A subpasta `.superapp/` guarda o histórico e 
 - Um único parágrafo gigante (milhares de linhas seguidas, sem linha em branco, com muitos links) deixa o analisador de Markdown lento, em qualquer modo. Notas normais não sofrem.
 - Não tem busca no conteúdo das notas, `[[links]]` entre notas, nem sincronização entre máquinas.
 
+## Visual
+
+Monocromático, de cantos retos e botões de contorno tracejado, inspirado em pixel-perfect.space. Fonte Inter Tight no texto e Pixelify Sans no nome da pasta, as duas dentro do pacote (52 KB, sem rede). Cores, medidas e o que difere do site estão em [`docs/VISUAL.md`](docs/VISUAL.md); `npm run contrast` confere o contraste nos dois temas.
+
 ## Segurança
 
 O servidor só escuta em `127.0.0.1`, recusa `Host` e `Origin` de fora e exige um token por sessão. Caminhos são presos à pasta escolhida, inclusive contra symlinks. O HTML das notas passa por DOMPurify. O app não faz nenhuma requisição à internet.

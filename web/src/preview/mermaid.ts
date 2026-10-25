@@ -26,7 +26,8 @@ function remember(key: string, value: Rendered): void {
 async function load(dark: boolean): Promise<Lib> {
   lib ??= import('mermaid').then((m) => m.default);
   const m = await lib;
-  const want = dark ? 'dark' : 'default';
+  // O tema 'default' do Mermaid é lilás; 'neutral' combina com o visual monocromático do app.
+  const want = dark ? 'dark' : 'neutral';
   if (configuredFor !== want) {
     // layout 'dagre' é obrigatório: o padrão do Mermaid 12 carrega o motor ELK (440 KB gzip) só para desenhar um fluxograma.
     m.initialize({ startOnLoad: false, securityLevel: 'strict', theme: want, fontFamily: 'inherit', layout: 'dagre' });
