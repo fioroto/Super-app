@@ -1,3 +1,5 @@
+> Próxima etapa (modo Documento, edição como no Google Docs): ver [PLANO-DOCUMENTO.md](PLANO-DOCUMENTO.md).
+
 # Plano: Super-app — notas, diagramas e kanban em Markdown, leve e local
 
 ## Contexto
