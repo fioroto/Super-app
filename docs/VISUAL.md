@@ -37,7 +37,7 @@ Sombras: cartão `0 1px 3px #0000001a, 0 1px 2px -1px #0000001a`; diálogo `0 25
 ## Forma
 
 - `--radius: 0` em botões, campos, abas, lanes, cartões e diálogos.
-- Botão de contorno (`.btn`) tracejado; botão da barra de formatação (`.fmt-btn`) sem borda, só com hover.
+- Tracejado só no que cria algo: `+ Nota`, `+ Quadro`, `+ Desenho`, `+ Pasta` (`.btn.create`). Os demais `.btn` têm borda contínua fina; botões de ação (`.icon-btn`) e da barra de formatação (`.fmt-btn`) não têm borda, só hover.
 - Altura dos controles: 2 rem (`--control-h`), 2,25 rem nos campos de diálogo.
 - Movimento só em CSS, 150 ms, desligado com `prefers-reduced-motion`.
 
@@ -50,3 +50,10 @@ Sombras: cartão `0 1px 3px #0000001a, 0 1px 2px -1px #0000001a`; diálogo `0 25
 | Código | pilha do sistema | nenhum | 0 |
 
 Ambas OFL-1.1. O latino cobre o português (U+0000–00FF). Os arquivos entram no `dist/web/assets/` com nome por conteúdo, pelo `@font-face` de `web/src/styles.css`. Nada é baixado da internet.
+
+## Layout dos controles
+
+- Cabeçalho da barra lateral (48 px): nome da pasta em Pixelify Sans e quatro botões quadrados só com ícone. `aria-label` e `title` iguais ao texto antigo (`+ Nota`, `+ Quadro`, `+ Desenho`, `+ Pasta`).
+- Barra do arquivo em três colunas: caminho à esquerda, seletor de modo ao centro, ações à direita (Diagrama, Desenho, HTML, PDF, Histórico) como ícones, e o estado de salvamento em texto pequeno. Abaixo de 800 px a barra quebra em linhas.
+- Ícones: 16 px, traço de 2, `currentColor`, desenhados à mão em `web/src/app/icons.tsx`.
+- Anel de foco de 3 px visível em todo controle, inclusive nos que têm sombra (`.btn`). Dentro do editor o anel fica desligado.

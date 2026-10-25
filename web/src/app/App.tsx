@@ -6,6 +6,7 @@ import { DiagramDialog, diagramDialog, openDiagramDialog } from '../diagrams/mer
 import { Canvas } from '../diagrams/canvas/Canvas.tsx';
 import { KanbanBoard } from '../kanban/Board.tsx';
 import { Dialog } from './Dialog.tsx';
+import { IconBoard, IconDiagram, IconDraw, IconFolder, IconHistory, IconHtml, IconNote, IconPrint } from './icons.tsx';
 import { useLazy } from './lazy.ts';
 import { insertDrawing } from './insert.ts';
 import { QuickOpen } from './QuickOpen.tsx';
@@ -61,10 +62,10 @@ export function App() {
         <header class="side-head">
           <strong title={vault.value.root}>{vault.value.name}</strong>
           <span class="side-tools">
-            <button class="btn" onClick={newNote} title="Nova nota">+ Nota</button>
-            <button class="btn" onClick={newBoard} title="Novo quadro kanban">+ Quadro</button>
-            <button class="btn" onClick={newDrawing} title="Novo desenho livre">+ Desenho</button>
-            <button class="btn" onClick={newFolder} title="Nova pasta">+ Pasta</button>
+            <button class="btn create icon" onClick={newNote} aria-label="+ Nota" title="Nova nota"><IconNote /></button>
+            <button class="btn create icon" onClick={newBoard} aria-label="+ Quadro" title="Novo quadro kanban"><IconBoard /></button>
+            <button class="btn create icon" onClick={newDrawing} aria-label="+ Desenho" title="Novo desenho livre"><IconDraw /></button>
+            <button class="btn create icon" onClick={newFolder} aria-label="+ Pasta" title="Nova pasta"><IconFolder /></button>
           </span>
         </header>
         {tree.value && <Tree root={tree.value} />}
@@ -88,30 +89,34 @@ export function App() {
         {d ? (
           <>
             <header class="bar">
-              <span class="muted">{d.path}</span>
-              {text && d.kind === 'md' && (
-                <span class="tools">
-                  <button class="btn" onClick={openDiagramDialog} title="Inserir ou editar diagrama Mermaid">Diagrama</button>
-                  <button class="btn" onClick={insertDrawing} title="Inserir um desenho livre na nota">Desenho</button>
-                  <button class="btn" onClick={() => void import('../export/exporters.ts').then((m) => m.exportHtml(d.path, d.text)).catch((e) => (error.value = e.message))} title="Baixar a nota como uma página HTML única">HTML</button>
-                  <button class="btn" onClick={printNote} title="Imprimir ou salvar como PDF">PDF</button>
-                </span>
-              )}
-              {text && d.kind === 'md' && (
-                <span class="seg">
-                  {(['doc', 'editor', 'split'] as const).map((m) => (
-                    <button class={mode.value === m ? 'on' : ''} onClick={() => (mode.value = m)}>{{ doc: 'Documento', editor: 'Código', split: 'Dividido' }[m]}</button>
-                  ))}
-                </span>
-              )}
-              {(d.kind === 'md' || d.kind === 'text') && <button class="btn" onClick={() => (historyFor.value = d.path)} title="Ver e restaurar versões anteriores">Histórico</button>}
-              {d.kind === 'kanban' && (
-                <span class="seg">
-                  <button class={!d.raw ? 'on' : ''} onClick={() => d.raw && toggleRaw(d.path)}>Quadro</button>
-                  <button class={d.raw ? 'on' : ''} onClick={() => !d.raw && toggleRaw(d.path)}>Texto</button>
-                </span>
-              )}
-              <span class={`status ${d.state}`}>{STATE_LABEL[d.state]}</span>
+              <span class="bar-path muted" title={d.path}>{d.path}</span>
+              <span class="bar-mode">
+                {text && d.kind === 'md' && (
+                  <span class="seg">
+                    {(['doc', 'editor', 'split'] as const).map((m) => (
+                      <button class={mode.value === m ? 'on' : ''} onClick={() => (mode.value = m)}>{{ doc: 'Documento', editor: 'Código', split: 'Dividido' }[m]}</button>
+                    ))}
+                  </span>
+                )}
+                {d.kind === 'kanban' && (
+                  <span class="seg">
+                    <button class={!d.raw ? 'on' : ''} onClick={() => d.raw && toggleRaw(d.path)}>Quadro</button>
+                    <button class={d.raw ? 'on' : ''} onClick={() => !d.raw && toggleRaw(d.path)}>Texto</button>
+                  </span>
+                )}
+              </span>
+              <span class="bar-actions">
+                {text && d.kind === 'md' && (
+                  <>
+                    <button class="icon-btn" onClick={openDiagramDialog} aria-label="Diagrama" title="Inserir ou editar diagrama Mermaid"><IconDiagram /></button>
+                    <button class="icon-btn" onClick={insertDrawing} aria-label="Desenho" title="Inserir um desenho livre na nota"><IconDraw /></button>
+                    <button class="icon-btn" onClick={() => void import('../export/exporters.ts').then((m) => m.exportHtml(d.path, d.text)).catch((e) => (error.value = e.message))} aria-label="HTML" title="Baixar a nota como uma página HTML única"><IconHtml /></button>
+                    <button class="icon-btn" onClick={printNote} aria-label="PDF" title="Imprimir ou salvar como PDF"><IconPrint /></button>
+                  </>
+                )}
+                {(d.kind === 'md' || d.kind === 'text') && <button class="icon-btn" onClick={() => (historyFor.value = d.path)} aria-label="Histórico" title="Ver e restaurar versões anteriores"><IconHistory /></button>}
+                <span class={`status ${d.state}`}>{STATE_LABEL[d.state]}</span>
+              </span>
             </header>
 
             {d.state === 'conflict' && (
