@@ -161,6 +161,18 @@ export async function save(path: string): Promise<void> {
   }
 }
 
+/** Recarrega do disco o conteúdo de uma aba (depois de restaurar uma versão, por exemplo). */
+export async function reloadFromDisk(path: string): Promise<void> {
+  try {
+    const f = await api.read(path);
+    patch(path, (d) => ({ text: f.content, hash: f.hash, state: 'ok', disk: undefined, missing: false, rev: d.rev + 1 }));
+  } catch (e) { fail(e); }
+}
+
+/** Telas que carregam sob demanda: histórico de versões e comparação de textos. */
+export const historyFor = signal<string | null>(null);
+export const diffView = signal<{ title: string; left: string; right: string; leftLabel: string; rightLabel: string } | null>(null);
+
 export function keepMine(path: string): void {
   const d = find(path);
   if (!d) return;

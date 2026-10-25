@@ -54,7 +54,7 @@ export interface SavedEvent {
   previous: string | null;
 }
 
-export class Vault extends EventEmitter<{ saved: [SavedEvent]; removing: [string, string] }> {
+export class Vault extends EventEmitter<{ saved: [SavedEvent]; removing: [string, string]; renamed: [string, string] }> {
   readonly root: string;
 
   private constructor(root: string) {
@@ -182,6 +182,7 @@ export class Vault extends EventEmitter<{ saved: [SavedEvent]; removing: [string
     }
     await mkdir(path.dirname(b), { recursive: true });
     await retrying(() => rename(a, b));
+    this.emit('renamed', from, to);
   }
 
   /** Excluir = mover para a lixeira do vault. */

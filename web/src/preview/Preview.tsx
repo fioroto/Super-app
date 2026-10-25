@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { openFile } from '../app/store.ts';
+import { error, openFile } from '../app/store.ts';
 import { theme } from '../app/theme.ts';
 import { renderMarkdown } from './markdown.ts';
 import { cached, isDark, renderDiagram, type Rendered } from './mermaid.ts';
@@ -9,6 +9,7 @@ function show(pre: HTMLElement, res: Rendered, last: Map<number, string>, i: num
   if ('svg' in res) {
     div.className = 'mermaid-out';
     div.innerHTML = res.svg;
+    div.insertAdjacentHTML('beforeend', '<span class="mermaid-tools"><button data-export="svg" title="Baixar SVG">SVG</button><button data-export="png" title="Baixar PNG">PNG</button></span>');
     last.set(i, res.svg);
   } else {
     div.className = 'mermaid-error';
@@ -58,8 +59,16 @@ export function Preview({ path, text }: { path: string; text: string }) {
   useEffect(() => { last.current = new Map(); }, [path]);
 
   const onClick = (e: MouseEvent) => {
-    const a = (e.target as HTMLElement).closest('a[data-note]');
-    if (a) { e.preventDefault(); void openFile(a.getAttribute('data-note')!); }
+    const target = e.target as HTMLElement;
+    const a = target.closest('a[data-note]');
+    if (a) { e.preventDefault(); void openFile(a.getAttribute('data-note')!); return; }
+    const btn = target.closest<HTMLElement>('button[data-export]');
+    const svg = btn?.closest('.mermaid-out')?.querySelector('svg');
+    if (btn && svg) {
+      const kind = btn.dataset.export;
+      void import('../export/exporters.ts').then((m) => (kind === 'png' ? m.downloadPng(svg.outerHTML) : m.downloadSvg(svg.outerHTML)))
+        .catch((err) => { error.value = (err as Error).message; });
+    }
   };
 
   // key={dark}: trocar o tema remonta o artigo e redesenha os diagramas com as cores novas.

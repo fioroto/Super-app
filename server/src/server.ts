@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import {
   PathError, cookieToken, hostAllowed, newToken, originAllowed, tokenValid,
 } from './security.ts';
+import { BadVersion, History } from './history.ts';
 import { ConflictError, NotFoundError, Vault } from './vault.ts';
 import { watchVault, type VaultWatcher } from './watcher.ts';
 
@@ -18,6 +19,8 @@ export interface Options {
   home: string;
   open?: boolean;
   token?: string;
+  /** Relógio do histórico; os testes trocam por um relógio controlado. */
+  now?: () => number;
 }
 
 export interface Running {
@@ -133,6 +136,7 @@ async function listDirs(target: string): Promise<{ path: string; parent: string 
 export async function startServer(opts: Options): Promise<Running> {
   const token = opts.token ?? newToken();
   let vault: Vault | null = null;
+  let history: History | null = null;
   let watcher: VaultWatcher | null = null;
   let port = 0;
   const listeners = new Set<ServerResponse>();
@@ -144,7 +148,9 @@ export async function startServer(opts: Options): Promise<Running> {
 
   const attach = (v: Vault) => {
     watcher?.close();
+    vault?.removeAllListeners();
     vault = v;
+    history = new History(v, opts.now);
     watcher = watchVault(v.root, broadcast);
   };
 
@@ -169,6 +175,11 @@ export async function startServer(opts: Options): Promise<Running> {
   // Mantém a conexão de eventos viva atrás de proxies e antivírus.
   const ping = setInterval(() => { for (const res of listeners) res.write(': ping\n\n'); }, 25_000);
   ping.unref();
+
+  const needHistory = (): History => {
+    needVault();
+    return history!;
+  };
 
   const needVault = (): Vault => {
     if (!vault) throw new HttpError(409, 'nenhuma pasta aberta', { code: 'no-vault' });
@@ -196,6 +207,16 @@ export async function startServer(opts: Options): Promise<Running> {
         req.on('close', () => listeners.delete(res));
         return;
       }
+      case 'GET /api/history':
+        return json(res, 200, { versions: await needHistory().list(q('path')) });
+      case 'GET /api/history/version':
+        return json(res, 200, { content: await needHistory().read(q('path'), q('id')) });
+      case 'POST /api/history/restore': {
+        const body = await readJson(req);
+        const restored = await needHistory().restore(str(body.path, 'path'), str(body.id, 'id'));
+        await history?.idle();
+        return json(res, 200, restored);
+      }
       case 'GET /api/tree':
         return json(res, 200, await needVault().tree());
       case 'GET /api/file': {
@@ -206,15 +227,18 @@ export async function startServer(opts: Options): Promise<Running> {
         const body = await readJson(req);
         const expected = body.hash === null || body.hash === undefined ? null : str(body.hash, 'hash');
         const r = await needVault().write(str(body.path, 'path'), str(body.content, 'content'), expected, { force: body.force === true });
+        await history?.idle();
         return json(res, 200, r);
       }
       case 'DELETE /api/file': {
         const trash = await needVault().remove(q('path'));
+        await history?.idle();
         return json(res, 200, { trash });
       }
       case 'POST /api/rename': {
         const body = await readJson(req);
         await needVault().rename(str(body.from, 'from'), str(body.to, 'to'));
+        await history?.idle();
         return json(res, 200, { ok: true });
       }
       case 'POST /api/mkdir': {
@@ -281,7 +305,7 @@ export async function startServer(opts: Options): Promise<Running> {
       if (res.headersSent) return void res.destroy();
       if (e instanceof HttpError) return json(res, e.status, { error: e.message, ...e.extra });
       if (e instanceof ConflictError) return json(res, 409, { error: e.message, code: 'conflict', currentHash: e.currentHash });
-      if (e instanceof NotFoundError) return json(res, 404, { error: e.message });
+      if (e instanceof NotFoundError || e instanceof BadVersion) return json(res, 404, { error: e.message });
       if (e instanceof PathError) return json(res, 400, { error: e.message });
       console.error(e);
       json(res, 500, { error: 'erro interno' });

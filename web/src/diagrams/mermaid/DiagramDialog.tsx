@@ -93,6 +93,8 @@ export function DiagramDialog() {
         </div>
         <div class="actions">
           <span class="muted">Ctrl+Enter {editing ? 'salva' : 'insere'}</span>
+          <button type="button" class="btn" disabled={!result || !('svg' in result)} onClick={() => result && 'svg' in result && void import('../../export/exporters.ts').then((m) => m.downloadSvg(result.svg))}>Baixar SVG</button>
+          <button type="button" class="btn" disabled={!result || !('svg' in result)} onClick={() => result && 'svg' in result && void import('../../export/exporters.ts').then((m) => m.downloadPng(result.svg))}>Baixar PNG</button>
           <button type="button" class="btn" onClick={close}>Cancelar</button>
           <button type="button" class="btn primary" onClick={insert}>{editing ? 'Salvar' : 'Inserir'}</button>
         </div>

@@ -16,7 +16,7 @@ export interface App {
   close(): Promise<void>;
 }
 
-export async function startApp(files: Record<string, string> = {}, opts: { vault?: boolean } = {}): Promise<App> {
+export async function startApp(files: Record<string, string> = {}, opts: { vault?: boolean; now?: () => number } = {}): Promise<App> {
   const tmp = await mkdtemp(path.join(os.tmpdir(), 'superapp-'));
   const vault = path.join(tmp, 'vault');
   const home = path.join(tmp, 'home');
@@ -30,6 +30,7 @@ export async function startApp(files: Record<string, string> = {}, opts: { vault
     port: 0,
     webRoot: path.join(root, 'dist/web'),
     home,
+    now: opts.now,
   });
   const base = `http://127.0.0.1:${run.port}`;
   const cookie = `sa=${run.token}`;

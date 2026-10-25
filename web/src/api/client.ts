@@ -8,6 +8,7 @@ export interface TreeNode {
 }
 export interface FileData { content: string; hash: string; mtime: number }
 export interface VaultInfo { name: string; root: string }
+export interface Version { id: string; time: number; size: number }
 export interface DirList { path: string; parent: string | null; dirs: string[] }
 
 export class ApiError extends Error {
@@ -51,5 +52,8 @@ export const api = {
       body: file,
       headers: { 'x-filename': enc(name) },
     }),
+  history: (path: string) => call<{ versions: Version[] }>('GET', `/api/history?path=${enc(path)}`),
+  historyVersion: (path: string, id: string) => call<{ content: string }>('GET', `/api/history/version?path=${enc(path)}&id=${enc(id)}`),
+  restore: (path: string, id: string) => call<{ hash: string }>('POST', '/api/history/restore', { path, id }),
   rawUrl: (path: string) => `/api/raw?path=${enc(path)}`,
 };

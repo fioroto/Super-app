@@ -5,15 +5,33 @@ import { DiagramDialog, diagramDialog, openDiagramDialog } from '../diagrams/mer
 import { Canvas } from '../diagrams/canvas/Canvas.tsx';
 import { KanbanBoard } from '../kanban/Board.tsx';
 import { Dialog } from './Dialog.tsx';
+import { useLazy } from './lazy.ts';
 import { insertDrawing } from './insert.ts';
 import { QuickOpen } from './QuickOpen.tsx';
 import { Tree } from './Tree.tsx';
 import { VaultPicker } from './VaultPicker.tsx';
 import { applyTheme, cycleTheme, theme } from './theme.ts';
 import {
-  activate, active, activePath, boot, closeFile, docs, error, keepMine, mode, newBoard, newDrawing, newFolder, newNote, openQuick, picker, save, takeDisk, toggleRaw, tree, vault,
+  activate, active, activePath, boot, closeFile, docs, error, diffView, historyFor, keepMine, mode, newBoard, newDrawing, newFolder, newNote, openQuick, picker, save, takeDisk, toggleRaw, tree, vault,
 } from './store.ts';
 import { api } from '../api/client.ts';
+
+function LazyHistory() {
+  const m = useLazy(() => import('../history/HistoryPanel.tsx'));
+  return m ? <m.HistoryPanel /> : null;
+}
+function LazyDiff() {
+  const m = useLazy(() => import('../history/DiffDialog.tsx'));
+  return m ? <m.DiffDialog /> : null;
+}
+
+/** Imprime só a nota: passa para o modo "Ler" e volta ao que estava. */
+function printNote() {
+  const before = mode.value;
+  mode.value = 'preview';
+  addEventListener('afterprint', () => { mode.value = before; }, { once: true });
+  setTimeout(() => print(), 150);
+}
 
 const STATE_LABEL = { ok: 'salvo', dirty: 'editando…', saving: 'salvando…', conflict: 'conflito', error: 'erro' } as const;
 const THEME_LABEL = { auto: 'Tema: sistema', light: 'Tema: claro', dark: 'Tema: escuro' } as const;
@@ -74,6 +92,8 @@ export function App() {
                 <span class="tools">
                   <button class="btn" onClick={openDiagramDialog} title="Inserir ou editar diagrama Mermaid">Diagrama</button>
                   <button class="btn" onClick={insertDrawing} title="Inserir um desenho livre na nota">Desenho</button>
+                  <button class="btn" onClick={() => void import('../export/exporters.ts').then((m) => m.exportHtml(d.path, d.text)).catch((e) => (error.value = e.message))} title="Baixar a nota como uma página HTML única">HTML</button>
+                  <button class="btn" onClick={printNote} title="Imprimir ou salvar como PDF">PDF</button>
                 </span>
               )}
               {text && d.kind === 'md' && (
@@ -83,6 +103,7 @@ export function App() {
                   ))}
                 </span>
               )}
+              {(d.kind === 'md' || d.kind === 'text') && <button class="btn" onClick={() => (historyFor.value = d.path)} title="Ver e restaurar versões anteriores">Histórico</button>}
               {d.kind === 'kanban' && (
                 <span class="seg">
                   <button class={!d.raw ? 'on' : ''} onClick={() => d.raw && toggleRaw(d.path)}>Quadro</button>
@@ -96,6 +117,7 @@ export function App() {
               <div class="banner">
                 <span>Este arquivo mudou no disco enquanto você editava.</span>
                 <button class="btn" onClick={() => keepMine(d.path)}>Manter a minha</button>
+                <button class="btn" disabled={!d.disk} onClick={() => d.disk && (diffView.value = { title: `Diferença em ${d.path}`, left: d.disk.content, right: d.text, leftLabel: 'No disco', rightLabel: 'No editor (a minha)' })}>Ver diferença</button>
                 <button class="btn" disabled={!d.disk} onClick={() => takeDisk(d.path)}>Carregar do disco</button>
               </div>
             )}
@@ -124,6 +146,8 @@ export function App() {
 
       {picker.value && <QuickOpen />}
       {diagramDialog.value && <DiagramDialog key={diagramDialog.value.from ?? -1} />}
+      {historyFor.value && <LazyHistory />}
+      {diffView.value && <LazyDiff />}
       <Dialog />
     </div>
   );
