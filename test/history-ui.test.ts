@@ -134,6 +134,69 @@ describe('histórico na interface', () => {
     });
   });
 
+  it('estilo VS Code: seta no meio pelo teclado, régua com as mudanças e trechos iguais recolhidos', async () => {
+    const paras = Array.from({ length: 10 }, (_, i) => `Parágrafo número ${i} do relatório.`);
+    const v1 = `${paras.join('\n\n')}\n`;
+    const v2 = v1.replace('Parágrafo número 1 do', 'Parágrafo número um do').replace('Parágrafo número 8 do', 'Parágrafo número oito do');
+    await withPage(browser, { 'a.md': v1 }, async (page, app) => {
+      const f = await (await app.fetch('/api/file?path=a.md')).json() as { hash: string };
+      await app.fetch('/api/file', { method: 'PUT', body: JSON.stringify({ path: 'a.md', content: v2, hash: f.hash }) });
+      await open(page, 'a.md');
+      await page.getByRole('button', { name: 'Histórico' }).click();
+      await expect.poll(() => page.locator('.pdiff.split .pdiff-row.changed').count()).toBe(2);
+
+      // A seta fica escondida até o mouse passar ou o teclado chegar nela.
+      await page.mouse.move(0, 0);
+      const arrow = page.locator('.pdiff-row.changed').first().getByRole('button', { name: 'Voltar este trecho' });
+      expect(await arrow.evaluate((el) => getComputedStyle(el).opacity)).toBe('0');
+      for (let i = 0; i < 40 && (await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))) !== 'Voltar este trecho'; i++) await page.keyboard.press('Tab');
+      expect(await arrow.evaluate((el) => el === document.activeElement && getComputedStyle(el).opacity)).toBe('1');
+
+      // Régua: uma marca por mudança; clicar leva até a linha.
+      expect(await page.locator('.pdiff-mark').count()).toBe(2);
+      await page.locator('.pdiff-mark').nth(1).click();
+      expect(await page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.change)).toBe('1');
+
+      // Trechos iguais: recolhidos, todos abertos, recolhidos de novo.
+      const skips = await page.locator('.pdiff-skip').count();
+      expect(skips).toBeGreaterThan(0);
+      expect((await page.locator('.pdiff-skip').first().textContent())!.replace(/\s+/g, ' ').trim()).toMatch(/^⋯ \d+ parágrafos? ocultos?$/);
+      await page.getByRole('button', { name: 'Mostrar trechos iguais' }).click();
+      expect(await page.locator('.pdiff-skip').count()).toBe(0);
+      await page.getByRole('button', { name: 'Recolher trechos iguais' }).click();
+      expect(await page.locator('.pdiff-skip').count()).toBe(skips);
+
+      // A seta devolve o trecho, como o botão de antes.
+      await page.locator('.pdiff-row.changed').first().hover();
+      await page.locator('.pdiff-row.changed').first().getByRole('button', { name: 'Voltar este trecho' }).click();
+      await expect.poll(diskOf(app, 'a.md'), { timeout: 5000 }).toBe(v2.replace('número um do', 'número 1 do'));
+    });
+  });
+
+  it('em linha: alterna, lembra a escolha e é a única visão quando a janela é estreita', async () => {
+    await withPage(browser, { 'a.md': 'Um.\n\nDois.\n' }, async (page, app) => {
+      const f = await (await app.fetch('/api/file?path=a.md')).json() as { hash: string };
+      await app.fetch('/api/file', { method: 'PUT', body: JSON.stringify({ path: 'a.md', content: 'Um.\n\nDois e três.\n', hash: f.hash }) });
+      await open(page, 'a.md');
+      await page.getByRole('button', { name: 'Histórico' }).click();
+      await page.locator('.pdiff.split').waitFor();
+      await page.getByRole('button', { name: 'Em linha' }).click();
+      await page.locator('.pdiff.inline').waitFor();
+      expect(await page.locator('.pdiff-line.del mark.d').count() + await page.locator('.pdiff-line.ins mark.a').count()).toBe(1);
+      expect(await page.locator('.pdiff-line.ins mark.a').innerText()).toBe('e três');
+
+      await page.getByRole('button', { name: 'Fechar' }).click();
+      await page.getByRole('button', { name: 'Histórico' }).click();
+      await page.locator('.pdiff.inline').waitFor(); // a escolha ficou
+      await page.getByRole('button', { name: 'Lado a lado' }).click();
+      await page.locator('.pdiff.split').waitFor();
+
+      await page.setViewportSize({ width: 700, height: 800 });
+      await page.locator('.pdiff.inline').waitFor();
+      expect(await page.getByRole('button', { name: 'Lado a lado' }).isDisabled()).toBe(true);
+    });
+  });
+
   it('nota sem versões anteriores explica por quê', async () => {
     await withPage(browser, { 'nova.md': 'x\n' }, async (page) => {
       await open(page, 'nova.md');

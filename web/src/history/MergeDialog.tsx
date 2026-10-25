@@ -47,7 +47,7 @@ export function MergeDialog() {
         </header>
         <div class="history-diff">
           {diff ? (
-            <ProseDiffView left={disk} right={mine} leftLabel="No disco" rightLabel="No editor (o meu)" path={path} diff={diff} wide
+            <ProseDiffView left={disk} right={mine} leftLabel="No disco" rightLabel="No editor (o meu)" path={path} diff={diff} actionsAt="end"
               actions={(c) => (
                 <span class="pick" role="group" aria-label="Qual versão fica">
                   <button type="button" aria-pressed={fromDisk.has(c.id)} class={fromDisk.has(c.id) ? 'on' : ''} onClick={() => pick(c.id, true)}>Do disco</button>

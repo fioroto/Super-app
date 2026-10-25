@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 
 // Ícones de 16 px no estilo de traço fino (24×24, traço 2, pontas arredondadas), desenhados à mão.
 // Só os que a interface usa: sem biblioteca de ícones.
-const svg = (children: ComponentChildren) => (
+export const svg = (children: ComponentChildren) => (
   <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     {children}
   </svg>

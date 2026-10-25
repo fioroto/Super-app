@@ -53,6 +53,33 @@ for (const [name, theme] of [['claro', light], ['escuro', dark]]) {
     }
   }
 }
+// Comparação de versões: o texto fica sobre o destaque da palavra, que fica sobre o fundo da linha.
+// As cores saem do bloco .pdiff como color-mix(in srgb, var(--x) N%, transparent): a cor x com opacidade N%.
+const pdiff = vars(/\n\.pdiff \{([\s\S]*?)\n\}/, 'comparação (.pdiff)');
+const mixOf = (name, theme) => {
+  const m = /^color-mix\(in srgb, var\(--([a-z0-9-]+)\) (\d+)%, transparent\)$/.exec(pdiff[name] ?? '');
+  if (!m) throw new Error(`--${name} em .pdiff não é color-mix(... N%, transparent)`);
+  return [...rgba(theme[m[1]], theme).slice(0, 3), Number(m[2]) / 100];
+};
+for (const [name, theme] of [['claro', light], ['escuro', dark]]) {
+  const bg = rgba(theme.bg, theme).slice(0, 3);
+  const fg = rgba(theme.fg, theme).slice(0, 3);
+  console.log(`\nComparação de versões, tema ${name}`);
+  for (const [side, sign] of [['del', 'bad'], ['ins', 'ok']]) {
+    const line = over(mixOf(`${side}-line`, theme), bg);
+    const word = over(mixOf(`${side}-word`, theme), line);
+    for (const [label, a, b, min] of [
+      [`texto sobre a linha (${side})`, fg, line, 4.5],
+      [`texto sobre a palavra (${side})`, fg, word, 4.5],
+      [`sinal ${side === 'del' ? '−' : '+'} na calha`, rgba(theme[sign], theme).slice(0, 3), line, 3],
+    ]) {
+      const r = ratio(a, b);
+      if (r < min) failed = true;
+      console.log(`  ${r >= min ? 'ok   ' : 'FALHA'} ${label}`.padEnd(46) + `${r.toFixed(2)}:1 (mín. ${min})`);
+    }
+  }
+}
+
 // O tema escuro automático (preferência do sistema) precisa ser idêntico ao escuro escolhido à mão.
 for (const k of Object.keys(dark)) {
   if (media[k] !== dark[k]) { failed = true; console.log(`\nFALHA: --${k} difere entre o escuro automático (${media[k]}) e o manual (${dark[k]})`); }

@@ -5,6 +5,7 @@ import { basename } from '../app/files.ts';
 import { IconDraw } from '../app/icons.tsx';
 import { docs, error, flush, historyFor, reloadFromDisk } from '../app/store.ts';
 import { getView } from '../editor/Editor.tsx';
+import { IconRevert } from './diffIcons.tsx';
 import { revertEdits, type Change, type ProseDiff } from './proseDiff.ts';
 import { DiffView } from './DiffView.tsx';
 import { ProseDiffView, proseMode } from './ProseDiffView.tsx';
@@ -135,7 +136,7 @@ export function HistoryPanel() {
               <div class="history-diff">
                 {left === null || right === null ? <p class="muted pad">Carregando…</p> : mode ? (
                   <ProseDiffView left={left} right={right} leftLabel={leftLabel} rightLabel={rightLabel} path={path}
-                    actions={other ? undefined : (c, diff) => <button type="button" class="icon-btn" aria-label="Voltar este trecho" title="Voltar este trecho para a versão escolhida (Ctrl+Z na nota desfaz)" onClick={() => revert(c, diff)}>↶</button>} />
+                    actions={other ? undefined : (c, diff) => <button type="button" class="icon-btn" aria-label="Voltar este trecho" title="Voltar este trecho para a versão da esquerda (Ctrl+Z na nota desfaz)" onClick={() => revert(c, diff)}><IconRevert /></button>} />
                 ) : (
                   <DiffView left={left} right={right} leftLabel={leftLabel} rightLabel={rightLabel} />
                 )}
