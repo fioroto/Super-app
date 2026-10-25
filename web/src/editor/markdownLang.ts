@@ -10,25 +10,27 @@ const lang = new Language(data, parser.configure([GFM]), [], 'markdown');
 
 export const markdownSupport: Extension = lang.extension;
 
-const ITEM = /^(\s*)([-*+]|(\d+)([.)]))(\s+)(\[[ xX]\]\s+)?/;
+// 1 citação, 2 recuo, 3 marcador, 4 número, 5 delimitador, 6 espaço, 7 tarefa
+const LINE = /^(\s*(?:>[ ]?)*)(\s*)(?:([-*+]|(\d+)([.)]))(\s+)(\[[ xX]\]\s+)?)?/;
 
-/** Enter dentro de uma lista continua a lista; Enter num item vazio encerra a lista. */
+/** Enter continua lista e citação; Enter num item ou citação vazios encerra. */
 export const continueList: Command = (view) => {
   const { state } = view;
   const sel = state.selection.main;
   if (!sel.empty) return false;
   const line = state.doc.lineAt(sel.head);
-  const m = ITEM.exec(line.text);
-  if (!m || sel.head < line.from + m[0].length) return false;
+  const m = LINE.exec(line.text)!;
+  const [whole, quote, indent, marker, num, delim, space, task] = m;
+  if (!quote!.includes('>') && !marker) return false;
+  if (sel.head < line.from + whole.length) return false;
 
-  const [whole, indent, marker, num, delim, space, task] = m;
   if (line.text.slice(whole.length).trim() === '') {
-    // Item vazio: apaga o marcador e deixa a linha em branco.
+    // Vazio: apaga o marcador e a citação e deixa a linha em branco.
     view.dispatch({ changes: { from: line.from, to: line.to, insert: '' }, selection: EditorSelection.cursor(line.from), userEvent: 'input' });
     return true;
   }
-  const next = num ? `${Number(num) + 1}${delim}` : marker;
-  const insert = `\n${indent}${next}${space}${task ? '[ ] ' : ''}`;
+  const next = marker ? `${num ? `${Number(num) + 1}${delim}` : marker}${space}${task ? '[ ] ' : ''}` : '';
+  const insert = `\n${quote}${indent}${next}`;
   view.dispatch({
     changes: { from: sel.head, insert },
     selection: EditorSelection.cursor(sel.head + insert.length),

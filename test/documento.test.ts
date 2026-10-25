@@ -388,3 +388,235 @@ describe('modo Documento: imagem, diagrama e tabela', () => {
     });
   });
 });
+
+// ---------- W3: formatação, barra e atalhos ----------
+
+/** Texto com marcas: «» é a seleção, | é o cursor, ⏎ é quebra de linha, · é espaço. */
+function parseMarked(marked: string): { text: string; anchor: number; head: number } {
+  const raw = marked.replace(/⏎/g, '\n').replace(/·/g, ' ');
+  let text = '', from = -1, to = -1, cursor = -1;
+  for (const ch of raw) {
+    if (ch === '«') from = text.length;
+    else if (ch === '»') to = text.length;
+    else if (ch === '|') cursor = text.length;
+    else text += ch;
+  }
+  return cursor >= 0 ? { text, anchor: cursor, head: cursor } : { text, anchor: from, head: to };
+}
+function showMarked(text: string, anchor: number, head: number): string {
+  const [a, b] = [Math.min(anchor, head), Math.max(anchor, head)];
+  const marked = a === b ? `${text.slice(0, a)}|${text.slice(a)}` : `${text.slice(0, a)}«${text.slice(a, b)}»${text.slice(b)}`;
+  return marked.replace(/\n/g, '⏎').replace(/ /g, ' ');
+}
+const hasMarks = (s: string) => /[«»|]/.test(s);
+
+const setDoc = (page: Page, marked: string) => {
+  const { text, anchor, head } = parseMarked(marked);
+  return view<void>(page, '(v, [t, a, h]) => { v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: t }, selection: { anchor: a, head: h } }); v.focus(); }', text, anchor, head);
+};
+const snapshot = async (page: Page) => {
+  const s = await view<{ text: string; a: number; h: number }>(page, '(v) => ({ text: v.state.doc.toString(), a: v.state.selection.main.anchor, h: v.state.selection.main.head })');
+  return { text: s.text, marked: showMarked(s.text, s.a, s.h) };
+};
+/** Abre uma nota, põe o texto marcado e devolve a página pronta para o atalho. */
+const withNote = (marked: string, fn: (page: Page, app: { vault: string }) => Promise<void>, mode: Mode = 'doc') =>
+  doc({ 'n.md': 'x' }, async (page, app) => {
+    await open(page, 'n.md');
+    await page.locator('.cm-editor').waitFor();
+    await setDoc(page, marked);
+    await fn(page, app);
+  }, mode);
+
+const CASOS: [string, string, string, string][] = [
+  // [nome, antes, atalho, depois]  (sem marcas no "depois" = compara só o texto)
+  ['negrito na seleção', 'Olá «mundo»', 'Control+b', 'Olá **«mundo»**'],
+  ['tira o negrito (seleção dentro)', 'Olá **«mundo»**', 'Control+b', 'Olá «mundo»'],
+  ['tira o negrito (seleção com as marcas)', 'Olá «**mundo**»', 'Control+b', 'Olá «mundo»'],
+  ['tira o negrito (cursor dentro)', 'Olá **mu|ndo**', 'Control+b', 'Olá mu|ndo'],
+  ['negrito na palavra do cursor', 'Olá mu|ndo', 'Control+b', 'Olá **mu|ndo**'],
+  ['negrito sem palavra: par de marcas', 'Olá |', 'Control+b', 'Olá **|**'],
+  ['espaços ficam fora das marcas', '«·mundo·»', 'Control+b', '·**mundo**·'],
+  ['negrito por linha', '«linha 1⏎linha 2»', 'Control+b', '**«linha 1**⏎**linha 2»**'],
+  ['itálico dentro de negrito', '**mu|ndo**', 'Control+i', '***mu|ndo***'],
+  ['tira o itálico', '*«x»*', 'Control+i', '«x»'],
+  ['código em linha', '«a*b»', 'Control+Backquote', '`«a*b»`'],
+  ['riscado', 'a «b» c', 'Control+Shift+x', 'a ~~«b»~~ c'],
+  ['título 2 no cursor', '|Texto', 'Control+Alt+2', '## |Texto'],
+  ['repetir o nível volta a parágrafo', '## |Texto', 'Control+Alt+2', '|Texto'],
+  ['troca de nível', '## |Texto', 'Control+Alt+1', '# |Texto'],
+  ['título não vale em item de lista', '- |item', 'Control+Alt+1', '- |item'],
+  ['título em várias linhas', '«a⏎b»', 'Control+Alt+3', '### a⏎### b'],
+  ['parágrafo tira o título', '### |x', 'Control+Alt+0', '|x'],
+  ['lista de marcadores', '«a⏎b»', 'Control+Shift+8', '- a⏎- b'],
+  ['tira a lista', '«- a⏎- b»', 'Control+Shift+8', 'a⏎b'],
+  ['lista vira numerada', '«- a⏎- b»', 'Control+Shift+7', '1. a⏎2. b'],
+  ['numeração reinicia depois de linha vazia', '«a⏎⏎b»', 'Control+Shift+7', '1. a⏎⏎1. b'],
+  ['tira a tarefa', '«- [ ] a»', 'Control+Shift+9', 'a'],
+  ['tarefa em linha comum', '«a»', 'Control+Shift+9', '- [ ] a'],
+  ['lista mista completa o que falta', '«- a⏎b»', 'Control+Shift+8', '- a⏎- b'],
+  ['numerada vira marcadores', '«1. a⏎2. b»', 'Control+Shift+8', '- a⏎- b'],
+  ['marcadores viram tarefas', '«- a⏎- b»', 'Control+Shift+9', '- [ ] a⏎- [ ] b'],
+  ['citação', '«a⏎b»', 'Control+Shift+Period', '> a⏎> b'],
+  ['tira a citação', '«> a⏎> b»', 'Control+Shift+Period', 'a⏎b'],
+  ['citação mista completa o que falta', '«> a⏎b»', 'Control+Shift+Period', '> a⏎> b'],
+  ['bloco de código nas linhas', '«a⏎b»', 'Control+Alt+c', '```⏎a⏎b⏎```'],
+  ['tira o bloco de código', '```⏎«a»⏎```', 'Control+Alt+c', 'a'],
+  ['Tab aninha o item', '- a⏎- |b', 'Tab', '- a⏎  - |b'],
+  ['Shift+Tab desaninha', '- a⏎  - |b', 'Shift+Tab', '- a⏎- |b'],
+  ['Tab em lista numerada usa 3 espaços', '1. a⏎2. |b', 'Tab', '1. a⏎   2. |b'],
+  ['Tab no primeiro item não faz nada', '- |a', 'Tab', '- |a'],
+];
+
+describe('modo Documento: comandos de formatação', () => {
+  for (const [nome, antes, atalho, depois] of CASOS) {
+    it(`${nome}: ${atalho}`, async () => {
+      await withNote(antes, async (page) => {
+        await page.keyboard.press(atalho);
+        const got = await snapshot(page);
+        if (hasMarks(depois)) expect(got.marked).toBe(depois);
+        else expect(got.text).toBe(parseMarked(depois).text);
+      });
+    });
+  }
+
+  it('um Ctrl+Z desfaz cada comando por inteiro', async () => {
+    await withNote('«a⏎b⏎c»', async (page) => {
+      for (const atalho of ['Control+b', 'Control+Shift+8', 'Control+Shift+Period', 'Control+Alt+2']) {
+        await setDoc(page, '«a⏎b⏎c»');
+        await page.keyboard.press(atalho);
+        expect((await snapshot(page)).text).not.toBe('a\nb\nc');
+        await page.keyboard.press('Control+z');
+        expect((await snapshot(page)).text, atalho).toBe('a\nb\nc');
+      }
+    });
+  });
+
+  it('Tab fora de lista não é engolido: segue o caminho normal do editor', async () => {
+    await withNote('|texto', async (page) => {
+      await page.keyboard.press('Tab');
+      expect((await snapshot(page)).text).not.toBe('texto');
+    });
+  });
+
+  it('Enter em citação continua; Enter em citação vazia sai', async () => {
+    await withNote('> a|', async (page) => {
+      await page.keyboard.press('Enter');
+      await page.keyboard.type('b');
+      expect((await snapshot(page)).text).toBe('> a\n> b');
+      await page.keyboard.press('Enter');
+      await page.keyboard.press('Enter');
+      expect((await snapshot(page)).text).toBe('> a\n> b\n');
+    });
+  });
+
+  it('atalhos de formatação só valem em notas .md', async () => {
+    await doc({ 'n.txt': 'texto' }, async (page) => {
+      await open(page, 'n.txt');
+      await page.locator('.cm-editor').waitFor();
+      await page.locator('.cm-content').click();
+      await page.keyboard.press('Control+a');
+      await page.keyboard.press('Control+b');
+      expect((await snapshot(page)).text).toBe('texto');
+      expect(await page.locator('.fmt-bar').count()).toBe(0);
+    });
+  });
+
+  it('funciona também nos modos Código e Dividido', async () => {
+    for (const mode of ['editor', 'split'] as const) {
+      await withNote('«x»', async (page) => {
+        await page.keyboard.press('Control+b');
+        expect((await snapshot(page)).marked).toBe('**«x»**');
+        expect(await page.locator('.fmt-bar').count()).toBe(1);
+      }, mode);
+    }
+  });
+});
+
+describe('modo Documento: link, tabela, imagem e barra', () => {
+  const dialog = (page: Page) => page.locator('.dialog input');
+
+  it('Ctrl+K cria o link com o texto selecionado', async () => {
+    await withNote('«texto»', async (page) => {
+      await page.keyboard.press('Control+k');
+      await dialog(page).fill('https://x.com');
+      await page.keyboard.press('Enter');
+      await expect.poll(async () => (await snapshot(page)).text).toBe('[texto](https://x.com)');
+    });
+  });
+
+  it('Ctrl+K num link existente edita só o endereço', async () => {
+    await withNote('[a](x|)', async (page) => {
+      await page.keyboard.press('Control+k');
+      expect(await dialog(page).inputValue()).toBe('x');
+      await dialog(page).fill('y');
+      await page.keyboard.press('Enter');
+      await expect.poll(async () => (await snapshot(page)).text).toBe('[a](y)');
+    });
+  });
+
+  it('Ctrl+K sem seleção usa o endereço como texto', async () => {
+    await withNote('|', async (page) => {
+      await page.keyboard.press('Control+k');
+      await dialog(page).fill('https://x.com');
+      await page.keyboard.press('Enter');
+      await expect.poll(async () => (await snapshot(page)).text).toBe('[https://x.com](https://x.com)');
+    });
+  });
+
+  it('botões da barra: negrito sem tirar o foco da seleção, e o botão acende com o cursor', async () => {
+    await withNote('Olá «mundo»', async (page) => {
+      await page.getByTitle('Negrito (Ctrl+B)').click();
+      expect((await snapshot(page)).marked).toBe('Olá **«mundo»**');
+      await expect.poll(() => page.getByTitle('Negrito (Ctrl+B)').getAttribute('aria-pressed')).toBe('true');
+      expect(await page.getByTitle('Itálico (Ctrl+I)').getAttribute('aria-pressed')).toBe('false');
+      await page.keyboard.type('!'); // o foco continua no texto
+      expect((await snapshot(page)).text).toBe('Olá **!**');
+    });
+  });
+
+  it('o seletor de estilo muda o título e mostra o nível do cursor', async () => {
+    await withNote('Tit|ulo', async (page) => {
+      await page.getByLabel('Estilo').selectOption('2');
+      expect((await snapshot(page)).text).toBe('## Titulo');
+      await expect.poll(() => page.getByLabel('Estilo').inputValue()).toBe('2');
+      await page.getByLabel('Estilo').selectOption('0');
+      expect((await snapshot(page)).text).toBe('Titulo');
+    });
+  });
+
+  it('botões de lista, citação, bloco, tabela e linha horizontal', async () => {
+    await withNote('a|', async (page) => {
+      await page.getByRole('button', { name: '☑ Tarefas' }).click();
+      expect((await snapshot(page)).text).toBe('- [ ] a');
+      await setDoc(page, '|');
+      await page.getByRole('button', { name: 'Tabela' }).click();
+      const t = await snapshot(page);
+      expect(t.text).toBe('| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n|  |  |  |\n');
+      expect(t.marked).toContain('|  |  |  |⏎'.replace('|  |', '|')); // o cursor está na primeira célula do corpo
+      expect(await view<number>(page, '(v) => v.state.selection.main.head')).toBe(t.text.indexOf('|  |  |  |') + 2);
+      await setDoc(page, 'topo|');
+      await page.getByRole('button', { name: '—' }).click();
+      expect((await snapshot(page)).text).toBe('topo\n\n---\n');
+    });
+  });
+
+  it('botão Imagem envia o arquivo para anexos/ e põe o link no cursor', async () => {
+    await withNote('|', async (page, app) => {
+      await page.locator('.fmt-bar input[type=file]').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: PNG });
+      await expect.poll(async () => (await snapshot(page)).text).toBe('![](anexos/foto.png)');
+      expect((await readFile(path.join(app.vault, 'anexos/foto.png'))).length).toBe(PNG.length);
+    });
+  });
+
+  it('a barra não aparece em Ler (impressão) nem em quadro ou .txt', async () => {
+    await withNote('x', async (page) => {
+      expect(await page.locator('.fmt-bar').count()).toBe(1);
+    });
+    const quadro = '---\n\nkanban-plugin: board\n\n---\n\n## A\n\n- [ ] x\n';
+    await doc({ 'q.md': quadro }, async (page) => {
+      await open(page, 'q.md');
+      await page.locator('.board').waitFor();
+      expect(await page.locator('.fmt-bar').count()).toBe(0);
+    });
+  });
+});

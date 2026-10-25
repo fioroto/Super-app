@@ -1,5 +1,6 @@
 import { useEffect } from 'preact/hooks';
 import { Editor } from '../editor/Editor.tsx';
+import { Toolbar } from '../editor/live/Toolbar.tsx';
 import { Preview } from '../preview/Preview.tsx';
 import { DiagramDialog, diagramDialog, openDiagramDialog } from '../diagrams/mermaid/DiagramDialog.tsx';
 import { Canvas } from '../diagrams/canvas/Canvas.tsx';
@@ -126,10 +127,13 @@ export function App() {
             {board ? (
               <KanbanBoard path={d.path} text={d.text} />
             ) : text ? (
+              <>
+              {d.kind === 'md' && mode.value !== 'preview' && <Toolbar />}
               <div class={`panes ${d.kind === 'md' ? mode.value : 'editor'}`}>
-                <div class="pane-edit"><Editor path={d.path} text={d.text} rev={d.rev} live={d.kind === 'md' && mode.value === 'doc'} /></div>
+                <div class="pane-edit"><Editor path={d.path} text={d.text} rev={d.rev} live={d.kind === 'md' && mode.value === 'doc'} md={d.kind === 'md'} /></div>
                 {d.kind === 'md' && (mode.value === 'split' || mode.value === 'preview') && <div class="pane-view"><Preview path={d.path} text={d.text} /></div>}
               </div>
+              </>
             ) : d.kind === 'canvas' ? (
               <Canvas key={d.rev} path={d.path} text={d.text} />
             ) : d.kind === 'image' ? (

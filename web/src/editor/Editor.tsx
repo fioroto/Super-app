@@ -5,9 +5,9 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 import { useEffect, useRef } from 'preact/hooks';
 import { api } from '../api/client.ts';
-import { relativeTo } from '../app/files.ts';
 import { theme } from '../app/theme.ts';
 import { refreshBlocks } from './live/blocks.ts';
+import { activeFormats, attachImage, formatKeymap, formats, NO_FORMATS } from './live/format.ts';
 import { livePreview } from './live/livePreview.ts';
 import { continueList, markdownSupport } from './markdownLang.ts';
 import { edit, error, save } from '../app/store.ts';
@@ -55,11 +55,11 @@ export const getView = (): EditorView | undefined => activeView;
 interface Cached { state: EditorState; rev: number }
 const cache = new Map<string, Cached>();
 
-export function Editor({ path, text, rev, live }: { path: string; text: string; rev: number; live: boolean }) {
+export function Editor({ path, text, rev, live, md }: { path: string; text: string; rev: number; live: boolean; md: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | undefined>(undefined);
-  const current = useRef({ path, rev, live });
-  current.current = { path, rev, live };
+  const current = useRef({ path, rev, live, md });
+  current.current = { path, rev, live, md };
 
   const modeExt = (on: boolean): Extension => (on ? livePreview({ notePath: () => current.current.path }) : codeTheme);
 
@@ -72,11 +72,12 @@ export function Editor({ path, text, rev, live }: { path: string; text: string; 
         EditorView.lineWrapping,
         markdownSupport,
         syntaxHighlighting(highlight),
-        keymap.of([{ key: 'Enter', run: continueList }, { key: 'Mod-s', preventDefault: true, run: () => (void save(current.current.path), true) }, indentWithTab, ...defaultKeymap, ...historyKeymap]),
+        keymap.of([...formatKeymap(() => current.current.md), { key: 'Enter', run: continueList }, { key: 'Mod-s', preventDefault: true, run: () => (void save(current.current.path), true) }, indentWithTab, ...defaultKeymap, ...historyKeymap]),
         baseTheme,
         liveSlot.of(modeExt(current.current.live)),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) edit(current.current.path, u.state.doc.toString());
+          if ((u.docChanged || u.selectionSet) && current.current.md) formats.value = activeFormats(u.state);
         }),
         EditorView.domEventHandlers({ paste: (e, v) => pasteImage(e, v, () => current.current.path) }),
       ],
@@ -110,6 +111,11 @@ export function Editor({ path, text, rev, live }: { path: string; text: string; 
     view.current?.dispatch({ effects: liveSlot.reconfigure(modeExt(live)) });
   }, [live]);
 
+  // A barra de formatação reflete o cursor da aba que está aberta.
+  useEffect(() => {
+    formats.value = md && view.current ? activeFormats(view.current.state) : NO_FORMATS;
+  }, [md, path, rev]);
+
   // Diagramas são desenhados com as cores do tema: trocar de tema pede para refazê-los.
   const themeNow = theme.value;
   useEffect(() => {
@@ -123,14 +129,6 @@ function pasteImage(e: ClipboardEvent, v: EditorView, notePath: () => string): b
   const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
   if (!file) return false;
   e.preventDefault();
-  const name = file.name && file.name !== 'image.png' ? file.name : `colado-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
-  api.attach(file, name).then(
-    ({ path }) => {
-      const md = `![](${relativeTo(notePath(), path)})`;
-      const { from, to } = v.state.selection.main;
-      v.dispatch({ changes: { from, to, insert: md }, selection: { anchor: from + md.length } });
-    },
-    (err) => { error.value = (err as Error).message; },
-  );
+  void attachImage(v, notePath(), file);
   return true;
 }
