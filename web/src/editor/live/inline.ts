@@ -4,7 +4,8 @@ import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate
 import type { SyntaxNode } from '@lezer/common';
 import { openFile } from '../../app/store.ts';
 import { resolveRel } from '../../app/files.ts';
-import { BulletWidget, CheckboxWidget, HrWidget, IndentWidget } from './widgets.ts';
+import { notePathFacet } from './context.ts';
+import { BulletWidget, CheckboxWidget, HrWidget, ImageWidget, IndentWidget } from './widgets.ts';
 
 /**
  * Esconder a marcação (`**`, `#`) fora do trecho em que o cursor está.
@@ -63,7 +64,7 @@ function build(view: EditorView): Built {
     all.push(r);
     atomic.push(r);
   };
-  const replaceWith = (from: number, to: number, widget: IndentWidget | BulletWidget | CheckboxWidget | HrWidget) => {
+  const replaceWith = (from: number, to: number, widget: IndentWidget | BulletWidget | CheckboxWidget | HrWidget | ImageWidget) => {
     const r = Decoration.replace({ widget }).range(from, to);
     all.push(r);
     atomic.push(r);
@@ -116,6 +117,14 @@ function build(view: EditorView): Built {
               }
             } else all.push(mark('cm-live-link').range(ref.from, ref.to));
             return;
+          }
+          case 'Image': {
+            const parts = node.getChildren('LinkMark');
+            const url = node.getChild('URL');
+            if (parts.length >= 4 && url && !touches(state, ref.from, ref.to)) {
+              replaceWith(ref.from, ref.to, new ImageWidget(doc.sliceString(url.from, url.to), doc.sliceString(parts[0]!.to, parts[1]!.from), state.facet(notePathFacet)()));
+            }
+            return false;
           }
           case 'URL':
             if (node.parent && node.parent.name !== 'Link' && node.parent.name !== 'Image') all.push(mark('cm-live-link').range(ref.from, ref.to));

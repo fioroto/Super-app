@@ -1,5 +1,7 @@
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
+import { liveBlocks } from './blocks.ts';
+import { notePathFacet } from './context.ts';
 import { liveInline, linkOpener } from './inline.ts';
 import './live.css';
 
@@ -13,7 +15,9 @@ export function livePreview(opts: LiveOptions): Extension {
   return [
     EditorView.editorAttributes.of({ class: 'cm-live' }),
     EditorView.contentAttributes.of({ spellcheck: 'true', lang: 'pt-BR' }),
+    notePathFacet.of(opts.notePath),
     liveInline,
+    liveBlocks,
     linkOpener(opts.notePath),
   ];
 }

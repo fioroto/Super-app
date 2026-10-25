@@ -6,6 +6,8 @@ import { tags as t } from '@lezer/highlight';
 import { useEffect, useRef } from 'preact/hooks';
 import { api } from '../api/client.ts';
 import { relativeTo } from '../app/files.ts';
+import { theme } from '../app/theme.ts';
+import { refreshBlocks } from './live/blocks.ts';
 import { livePreview } from './live/livePreview.ts';
 import { continueList, markdownSupport } from './markdownLang.ts';
 import { edit, error, save } from '../app/store.ts';
@@ -107,6 +109,12 @@ export function Editor({ path, text, rev, live }: { path: string; text: string; 
   useEffect(() => {
     view.current?.dispatch({ effects: liveSlot.reconfigure(modeExt(live)) });
   }, [live]);
+
+  // Diagramas são desenhados com as cores do tema: trocar de tema pede para refazê-los.
+  const themeNow = theme.value;
+  useEffect(() => {
+    view.current?.dispatch({ effects: refreshBlocks.of(null) });
+  }, [themeNow]);
 
   return <div class="cm-host" ref={host} />;
 }
