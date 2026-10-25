@@ -70,7 +70,7 @@ input:not([type=checkbox]) { font: inherit; color: inherit; background: var(--bg
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
 .dot.conflict, .dot.error { background: var(--bad); }
 
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 12px; border-bottom: 1px solid var(--line); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; padding: 4px 12px; border-bottom: 1px solid var(--line); }
 .seg { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
 .seg button { padding: 2px 10px; }
 .seg button.on { background: var(--accent); color: var(--accent-fg); }

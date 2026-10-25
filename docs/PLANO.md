@@ -287,3 +287,27 @@ Todas as fases foram implementadas, com testes de navegador, de API e de convers
 - Abrir um quadro e um desenho no **Obsidian real** (plugins Kanban e Excalidraw). Os formatos seguem a documentação e arquivos descritos por terceiros; não havia Obsidian no ambiente.
 - Rodar `iniciar.bat` no **Windows** e o vault dentro do **OneDrive** (a regravação com nova tentativa existe, mas não foi exercitada lá).
 - O workflow do **GitHub Actions** (escrito, nunca executado).
+
+
+---
+
+## Resultado: modo Documento (editar como no Google Docs)
+
+Plano em `PLANO-DOCUMENTO.md`. Fases W0 a W4 feitas, 187 testes passando.
+
+O CodeMirror continua sendo o editor e o texto do arquivo é o documento: a formatação é desenhada por cima (visualização ao vivo). Abrir e olhar não grava nada; editar uma linha muda só essa linha. A marcação aparece só no trecho do cursor, ao contrário do Google Docs, onde nunca aparece. Esse é o preço de nunca reescrever o arquivo.
+
+| Item | Meta | Resultado |
+|---|---|---|
+| JS inicial | ≤ 220 KB gzip (este trabalho ≤ +25 KB) | 160 KB (+7 KB). `turndown` (colar HTML) fica sob demanda. |
+| Heap, nota de 1.000 linhas em Documento | ≤ 30 MB | 5,1 MB |
+| Custo por tecla, 5.000 parágrafos (10 mil linhas) | mediana ≤ 50 ms | 17 ms |
+
+**O que aprendi no caminho**
+
+1. **O CodeMirror não mede margem de linha.** O CSS com `margin-top` nos títulos desalinhava o mapa de alturas e cliques abaixo deles caíam no lugar errado. Troquei por `padding`. A especificação mandava `margin`; o erro estava no briefing.
+2. **O analisador de Markdown fica quadrático num parágrafo único gigante** (`LinkEnd` do lezer): 5.000 linhas seguidas com um link cada levam 800 ms por tecla, em qualquer modo. Notas normais, com linhas em branco, levam 17 ms. Está nos limites conhecidos do README.
+3. **O CodeMirror só desenha o que cabe na janela.** Testes que olham o fim de uma nota longa precisam rolar até o cursor.
+4. Abrir uma nota põe o cursor no começo; se o primeiro bloco for um diagrama ou tabela, ele aparece como código até o cursor sair de lá.
+
+**Ainda precisa de uma pessoa:** abrir uma nota real do Obsidian no modo Documento, editar, e conferir lá que só mudou o que foi digitado; digitar com acentos e IME no Windows com negrito no meio da frase.

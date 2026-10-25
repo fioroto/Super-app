@@ -30,6 +30,8 @@ function enclosing(state: EditorState, from: number, to: number, name: string, f
 }
 
 const inCode = (state: EditorState, pos: number) => enclosing(state, pos, pos, 'FencedCode') !== null;
+/** O cursor está dentro de um bloco de código cercado. */
+export const inFencedCode = (state: EditorState) => inCode(state, state.selection.main.head);
 
 type Line = ReturnType<EditorState['doc']['lineAt']>;
 
@@ -278,6 +280,63 @@ export function activeFormats(state: EditorState): Formats {
 
 export const formats = signal<Formats>(NO_FORMATS);
 
+// ---------- Tab e Shift+Tab entre células de tabela ----------
+
+const pipesOf = (text: string): number[] => {
+  const out: number[] = [];
+  for (let i = 0; i < text.length; i++) if (text[i] === '|' && text[i - 1] !== '\\') out.push(i);
+  return out;
+};
+const isDelimiterRow = (text: string) => /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(text);
+
+/** Tab e Shift+Tab andam pelas células da tabela no código-fonte; Tab na última célula cria uma linha. */
+export const tableTab = (dir: 1 | -1): Command => (view) => {
+  const { state } = view;
+  const head = state.selection.main.head;
+  const table = enclosing(state, head, head, 'Table');
+  if (!table) return false;
+  const first = state.doc.lineAt(table.from);
+  const last = state.doc.lineAt(table.to);
+  const line = state.doc.lineAt(head);
+  const pipes = pipesOf(line.text);
+  if (pipes.length < 2) return false;
+  // Célula k: entre a barra k e a barra k+1.
+  const col = Math.max(0, pipes.findLastIndex((p) => p < head - line.from));
+  const cellStart = (l: Line, k: number) => {
+    const ps = pipesOf(l.text);
+    const at = l.from + (ps[k] ?? 0) + 1;
+    return state.doc.sliceString(at, at + 1) === ' ' ? at + 1 : at;
+  };
+  const rowFrom = (n: number, step: 1 | -1): Line | null => {
+    for (let i = n + step; i >= first.number && i <= last.number; i += step) {
+      const l = state.doc.line(i);
+      if (!isDelimiterRow(l.text)) return l;
+    }
+    return null;
+  };
+  const cells = pipes.length - 1;
+  let target: number;
+  if (dir === 1) {
+    if (col + 1 < cells) target = cellStart(line, col + 1);
+    else {
+      const next = rowFrom(line.number, 1);
+      if (next) target = cellStart(next, 0);
+      else {
+        const header = pipesOf(first.text).length - 1;
+        const row = `|${'  |'.repeat(Math.max(1, header))}`;
+        view.dispatch({ changes: { from: last.to, insert: `\n${row}` }, selection: { anchor: last.to + 1 + 2 }, userEvent: 'input.format', scrollIntoView: true });
+        return true;
+      }
+    }
+  } else if (col > 0) target = cellStart(line, col - 1);
+  else {
+    const prev = rowFrom(line.number, -1);
+    target = prev ? cellStart(prev, Math.max(0, pipesOf(prev.text).length - 2)) : cellStart(line, 0);
+  }
+  view.dispatch({ selection: { anchor: target }, scrollIntoView: true });
+  return true;
+};
+
 // ---------- Tab e Shift+Tab em itens de lista ----------
 
 const ITEM = /^(\s*)([-*+]|\d+[.)])\s/;
@@ -337,7 +396,7 @@ export function formatKeymap(enabled: () => boolean): KeyBinding[] {
     ...bind(['Mod-Shift-9', 'Mod-Shift-('], toggleList('task')),
     ...bind(['Mod-Shift-.', 'Mod-Shift->'], toggleQuote),
     ...bind(['Mod-Alt-c'], toggleCodeBlock),
-    { key: 'Tab', run: (v) => (enabled() ? indentList(1)(v) : false) },
-    { key: 'Shift-Tab', run: (v) => (enabled() ? indentList(-1)(v) : false) },
+    { key: 'Tab', run: (v) => (enabled() ? tableTab(1)(v) || indentList(1)(v) : false) },
+    { key: 'Shift-Tab', run: (v) => (enabled() ? tableTab(-1)(v) || indentList(-1)(v) : false) },
   ];
 }

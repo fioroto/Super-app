@@ -620,3 +620,140 @@ describe('modo Documento: link, tabela, imagem e barra', () => {
     });
   });
 });
+
+// ---------- W4: colar HTML, soltar imagem, tabela, impressão, desempenho ----------
+
+const pasteHtml = (page: Page, html: string, plain = 'texto puro', types: Record<string, string> = {}) =>
+  page.evaluate(([h, p, extra]) => {
+    const dt = new DataTransfer();
+    dt.setData('text/html', h as string);
+    dt.setData('text/plain', p as string);
+    for (const [k, v] of Object.entries(extra as Record<string, string>)) dt.setData(k, v);
+    document.querySelector('.cm-content')!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, [html, plain, types] as const);
+
+describe('modo Documento: colar, soltar e tabela', () => {
+  it('colar de uma página vira Markdown (títulos, ênfase, link, lista, tabela)', async () => {
+    const html = '<h2>Título</h2><p>Texto <strong>forte</strong>, <em>inclinado</em> e <a href="https://x.com">link</a>.</p><ul><li>um</li><li>dois</li></ul><ol><li>a</li><li>b</li></ol><table><thead><tr><th>N</th><th>V</th></tr></thead><tbody><tr><td>x</td><td>1</td></tr></tbody></table>';
+    await withNote('|', async (page) => {
+      await pasteHtml(page, html);
+      await expect.poll(async () => (await snapshot(page)).text).toBe(
+        '## Título\n\nTexto **forte**, *inclinado* e [link](https://x.com).\n\n- um\n- dois\n\n1. a\n2. b\n\n| N | V |\n| --- | --- |\n| x | 1 |',
+      );
+    });
+  });
+
+  it('colar do Google Docs: negrito e itálico vêm do estilo, e o envoltório não deixa tudo em negrito', async () => {
+    const html = '<meta charset="utf-8"><b style="font-weight:normal;" id="docs-internal-guid-1"><h1 dir="ltr"><span style="font-size:20pt;font-weight:700">Relatório</span></h1><p dir="ltr"><span style="font-weight:400">Normal </span><span style="font-weight:700">forte</span><span style="font-style:italic"> torto</span><span style="text-decoration:line-through"> riscado</span></p><ul><li dir="ltr"><p dir="ltr"><span>um</span></p></li><li dir="ltr"><p dir="ltr"><span>dois</span></p></li></ul></b>';
+    await withNote('|', async (page) => {
+      await pasteHtml(page, html);
+      await expect.poll(async () => (await snapshot(page)).text).toBe('# Relatório\n\nNormal **forte** *torto* ~~riscado~~\n\n- um\n- dois');
+    });
+  });
+
+  it('colar texto sem formatação, código do VS Code e dentro de bloco de código não converte', async () => {
+    await withNote('|', async (page) => {
+      await pasteHtml(page, '<span>só texto</span>', 'só texto');
+      await expect.poll(async () => (await snapshot(page)).text).toBe('só texto');
+      await setDoc(page, '|');
+      await pasteHtml(page, '<div style="font-family:monospace"><span style="font-style:italic">// comentário</span></div>', '// comentário', { 'vscode-editor-data': '{}' });
+      await expect.poll(async () => (await snapshot(page)).text).toBe('// comentário');
+      await setDoc(page, '```⏎|⏎```');
+      await pasteHtml(page, '<strong>forte</strong>', 'forte');
+      await expect.poll(async () => (await snapshot(page)).text).toBe('```\n\nforte```'.replace('\n\nforte', '\nforte\n'));
+    });
+  });
+
+  it('soltar uma imagem no editor salva em anexos/ e põe o link', async () => {
+    await withNote('texto|', async (page, app) => {
+      await page.evaluate(() => {
+        const dt = new DataTransfer();
+        dt.items.add(new File([new Uint8Array([137, 80, 78, 71])], 'solta.png', { type: 'image/png' }));
+        const box = document.querySelector('.cm-line')!.getBoundingClientRect();
+        document.querySelector('.cm-content')!.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: box.right - 2, clientY: box.top + 4, bubbles: true, cancelable: true }));
+      });
+      await expect.poll(async () => (await snapshot(page)).text).toBe('texto![](anexos/solta.png)');
+      expect((await readFile(path.join(app.vault, 'anexos/solta.png'))).length).toBe(4);
+    });
+  });
+
+  it('Tab e Shift+Tab andam pelas células; Tab na última célula cria uma linha', async () => {
+    const tabela = '| a | b |\n| --- | --- |\n| 1 | 2 |';
+    await withNote('x', async (page) => {
+      // setDoc usa | como marca de cursor; a tabela tem barras de verdade, então grava o texto direto.
+      const head = () => view<number>(page, '(v) => v.state.selection.main.head');
+      await view<void>(page, '(v, [t]) => { v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: t }, selection: { anchor: 2 } }); v.focus(); }', tabela); // dentro da célula "a"
+      await page.keyboard.press('Tab');
+      expect(await head()).toBe(6);                                   // célula "b"
+      await page.keyboard.press('Tab');
+      expect(await head()).toBe(tabela.indexOf('| 1') + 2);        // pula a linha de traços: célula "1"
+      await page.keyboard.press('Tab');
+      expect(await head()).toBe(tabela.indexOf('2'));                  // célula "2"
+      await page.keyboard.press('Tab');                                // última célula: cria linha
+      expect((await snapshot(page)).text).toBe(`${tabela}\n|  |  |`);
+      expect(await head()).toBe(tabela.length + 3);
+      await page.keyboard.press('Shift+Tab');
+      expect(await head()).toBe(tabela.indexOf('2'));
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Shift+Tab');
+      expect(await head()).toBe(6);
+    });
+  });
+
+  it('PDF a partir do modo Documento imprime em "Ler" e volta ao modo anterior', async () => {
+    await withNote('# Oi|', async (page) => {
+      await page.evaluate(() => { (window as any).print = () => { (window as any).__printed = document.querySelector('.panes')!.className; }; });
+      await page.getByRole('button', { name: 'PDF', exact: true }).click();
+      await expect.poll(() => page.evaluate(() => (window as any).__printed)).toContain('preview');
+      await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+      await expect.poll(() => modeButton(page, 'Documento').getAttribute('class')).toContain('on');
+    });
+  });
+
+  it('em janela estreita não aparece rolagem horizontal na página', async () => {
+    await withNote('# Título bem comprido que precisa quebrar linha quando a janela é pequena demais|', async (page) => {
+      await page.setViewportSize({ width: 640, height: 700 });
+      await page.waitForTimeout(200);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+  });
+});
+
+describe('modo Documento: memória e velocidade', () => {
+  it('nota de 1.000 linhas aberta em Documento usa no máximo 30 MB de heap JS', async () => {
+    const linhas = Array.from({ length: 1000 }, (_, i) => `## Seção ${i}\n\nLinha de texto com **negrito**, \`código\` e [link](https://x.com) número ${i}.\n`).join('\n');
+    await doc({ 'grande.md': linhas }, async (page) => {
+      await open(page, 'grande.md');
+      await page.locator('.cm-live-h2').first().waitFor();
+      await page.waitForTimeout(500);
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('HeapProfiler.collectGarbage');
+      const { usedSize } = (await cdp.send('Runtime.getHeapUsage')) as { usedSize: number };
+      console.log(`heap JS (Documento, 1.000 linhas): ${(usedSize / 1048576).toFixed(1)} MB`);
+      expect(usedSize).toBeLessThan(30 * 1048576);
+    });
+  });
+
+  it('digitar numa nota de 5.000 parágrafos leva no máximo 50 ms por tecla (mediana)', async () => {
+    // Parágrafos separados por linha em branco, como numa nota de verdade (10.000 linhas no total).
+    const linhas = Array.from({ length: 5000 }, (_, i) => `Linha **${i}** com *texto* e [link](x.md) e \`código\`.`).join('\n\n');
+    await doc({ 'grande.md': linhas }, async (page) => {
+      await open(page, 'grande.md');
+      await view<void>(page, '(v) => { v.dispatch({ selection: { anchor: Math.floor(v.state.doc.length / 2) }, scrollIntoView: true }); v.focus(); }');
+      await page.waitForTimeout(500);
+      const median = await page.evaluate(async () => {
+        const v = (window as any).__cmView();
+        const times: number[] = [];
+        for (let i = 0; i < 30; i++) {
+          const t0 = performance.now();
+          v.dispatch({ changes: { from: v.state.selection.main.head, insert: 'a' }, selection: { anchor: v.state.selection.main.head + 1 } });
+          await new Promise((r) => requestAnimationFrame(r));
+          times.push(performance.now() - t0);
+        }
+        return times.sort((a, b) => a - b)[15]!;
+      });
+      console.log(`mediana por tecla (5.000 parágrafos): ${median.toFixed(1)} ms`);
+      expect(median).toBeLessThan(50);
+    });
+  });
+});

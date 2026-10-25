@@ -16,7 +16,8 @@ O app abre no navegador. Para abrir uma pasta direto: `iniciar.bat "C:\Notas"` o
 
 | Recurso | Como |
 |---|---|
-| Notas | Editor de Markdown com preview ao lado (Editar / Dividido / Ler). Salva sozinho. Cole uma imagem e ela vai para `anexos/`. |
+| Notas | Três modos: **Documento** (padrão: o texto aparece formatado enquanto você digita), **Código** (o Markdown cru) e **Dividido** (código e preview lado a lado). Salva sozinho. Cole uma imagem ou solte um arquivo de imagem e ela vai para `anexos/`. |
+| Formatação | Barra e atalhos como no Google Docs. A marcação (`**`, `#`) só aparece no trecho onde o cursor está. Colar do Google Docs, Word ou de uma página vira Markdown. |
 | Busca | `Ctrl+P` abre arquivo pelo nome. |
 | Diagramas | Bloco ` ```mermaid ` na nota. O botão **Diagrama** abre um editor com modelos e preview. Baixe cada diagrama em SVG ou PNG. |
 | Desenho livre | **+ Desenho** cria um desenho (Excalidraw). Salva `nome.excalidraw.md` e `nome.excalidraw.svg`. O botão **Desenho** da nota insere a imagem. |
@@ -24,6 +25,23 @@ O app abre no navegador. Para abrir uma pasta direto: `iniciar.bat "C:\Notas"` o
 | Histórico | **Histórico** lista versões anteriores, mostra a diferença e restaura. |
 | Exportar | **HTML** gera uma página única (diagramas e imagens embutidos). **PDF** abre a impressão do navegador. |
 | Outras ferramentas | Se o VS Code, o Obsidian ou outro programa mudar um arquivo aberto, o app atualiza. Se você também editou, ele pergunta qual versão manter. |
+
+## Atalhos de formatação
+
+| Atalho | Ação |
+|---|---|
+| `Ctrl+B` `Ctrl+I` `Ctrl+Shift+X` | negrito, itálico, riscado |
+| ``Ctrl+` `` | código em linha |
+| `Ctrl+K` | link (num link existente, edita o endereço) |
+| `Ctrl+Alt+0` a `Ctrl+Alt+4` | parágrafo, título 1 a 4 |
+| `Ctrl+Shift+8` `Ctrl+Shift+7` `Ctrl+Shift+9` | lista, lista numerada, tarefas |
+| `Ctrl+Shift+.` | citação |
+| `Ctrl+Alt+C` | bloco de código |
+| `Tab` / `Shift+Tab` | aninhar ou desaninhar item de lista; andar entre células de tabela (no código-fonte) |
+| `Ctrl+P` | abrir arquivo pelo nome |
+| `Ctrl+S` | salvar agora |
+
+No Mac, use `Cmd` no lugar de `Ctrl`.
 
 ## Onde ficam os dados
 
@@ -40,6 +58,8 @@ Tudo na pasta que você escolheu. A subpasta `.superapp/` guarda o histórico e 
 - Imagens coladas dentro de um desenho (Excalidraw) ficam no JSON do arquivo e podem não aparecer no plugin do Obsidian.
 - O layout `elk` do Mermaid não vem no pacote (pesa 1,4 MB). Os diagramas usam o layout padrão.
 - Texto em chinês, japonês ou coreano dentro de desenhos usa a fonte do sistema.
+- No modo Documento, diagramas e tabelas dentro de listas ou citações aparecem como código (só os de primeiro nível viram desenho).
+- Um único parágrafo gigante (milhares de linhas seguidas, sem linha em branco, com muitos links) deixa o analisador de Markdown lento, em qualquer modo. Notas normais não sofrem.
 - Não tem busca no conteúdo das notas, `[[links]]` entre notas, nem sincronização entre máquinas.
 
 ## Segurança

@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import { api } from '../api/client.ts';
 import { theme } from '../app/theme.ts';
 import { refreshBlocks } from './live/blocks.ts';
-import { activeFormats, attachImage, formatKeymap, formats, NO_FORMATS } from './live/format.ts';
+import { activeFormats, attachImage, formatKeymap, formats, inFencedCode, NO_FORMATS } from './live/format.ts';
 import { livePreview } from './live/livePreview.ts';
 import { continueList, markdownSupport } from './markdownLang.ts';
 import { edit, error, save } from '../app/store.ts';
@@ -79,7 +79,11 @@ export function Editor({ path, text, rev, live, md }: { path: string; text: stri
           if (u.docChanged) edit(current.current.path, u.state.doc.toString());
           if ((u.docChanged || u.selectionSet) && current.current.md) formats.value = activeFormats(u.state);
         }),
-        EditorView.domEventHandlers({ paste: (e, v) => pasteImage(e, v, () => current.current.path) }),
+        EditorView.domEventHandlers({
+          paste: (e, v) => pasteImage(e, v, () => current.current.path) || pasteHtml(e, v, current),
+          dragover: (e) => (current.current.md && !!e.dataTransfer?.types.includes('Files') ? (e.preventDefault(), true) : false),
+          drop: (e, v) => dropImage(e, v, current),
+        }),
       ],
     });
 
@@ -130,5 +134,35 @@ function pasteImage(e: ClipboardEvent, v: EditorView, notePath: () => string): b
   if (!file) return false;
   e.preventDefault();
   void attachImage(v, notePath(), file);
+  return true;
+}
+
+const STRUCTURE = /<(?:h[1-6]|ul|ol|li|table|blockquote|pre|strong|b|em|i|del|s|strike|a)[\s>]|font-weight:\s*(?:bold|[6-9]00)|font-style:\s*italic|text-decoration[^"';]*line-through/i;
+
+type Ref = { current: { path: string; md: boolean } };
+
+/** Colar conteúdo formatado (página, Google Docs, Word) vira Markdown. Código do VS Code e texto puro colam como vêm. */
+function pasteHtml(e: ClipboardEvent, v: EditorView, ref: Ref): boolean {
+  const dt = e.clipboardData;
+  if (!ref.current.md || !dt || dt.types.includes('vscode-editor-data') || inFencedCode(v.state)) return false;
+  const html = dt.getData('text/html');
+  if (!html || !STRUCTURE.test(html)) return false;
+  e.preventDefault();
+  const plain = dt.getData('text/plain');
+  const path = ref.current.path;
+  const insert = (text: string) => {
+    if (ref.current.path === path) v.dispatch(v.state.replaceSelection(text));
+  };
+  void import('./live/paste.ts').then((m) => m.htmlToMarkdown(html)).then((md) => insert(md || plain), () => insert(plain));
+  return true;
+}
+
+function dropImage(e: DragEvent, v: EditorView, ref: Ref): boolean {
+  const file = [...(e.dataTransfer?.files ?? [])].find((f) => f.type.startsWith('image/'));
+  if (!file || !ref.current.md) return false;
+  e.preventDefault();
+  const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+  if (pos != null) v.dispatch({ selection: { anchor: pos } });
+  void attachImage(v, ref.current.path, file);
   return true;
 }
