@@ -98,8 +98,8 @@ export function App() {
               )}
               {text && d.kind === 'md' && (
                 <span class="seg">
-                  {(['editor', 'split', 'preview'] as const).map((m) => (
-                    <button class={mode.value === m ? 'on' : ''} onClick={() => (mode.value = m)}>{{ editor: 'Editar', split: 'Dividido', preview: 'Ler' }[m]}</button>
+                  {(['doc', 'editor', 'split'] as const).map((m) => (
+                    <button class={mode.value === m ? 'on' : ''} onClick={() => (mode.value = m)}>{{ doc: 'Documento', editor: 'Código', split: 'Dividido' }[m]}</button>
                   ))}
                 </span>
               )}
@@ -127,8 +127,8 @@ export function App() {
               <KanbanBoard path={d.path} text={d.text} />
             ) : text ? (
               <div class={`panes ${d.kind === 'md' ? mode.value : 'editor'}`}>
-                <div class="pane-edit"><Editor path={d.path} text={d.text} rev={d.rev} /></div>
-                {d.kind === 'md' && mode.value !== 'editor' && <div class="pane-view"><Preview path={d.path} text={d.text} /></div>}
+                <div class="pane-edit"><Editor path={d.path} text={d.text} rev={d.rev} live={d.kind === 'md' && mode.value === 'doc'} /></div>
+                {d.kind === 'md' && (mode.value === 'split' || mode.value === 'preview') && <div class="pane-view"><Preview path={d.path} text={d.text} /></div>}
               </div>
             ) : d.kind === 'canvas' ? (
               <Canvas key={d.rev} path={d.path} text={d.text} />

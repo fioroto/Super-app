@@ -48,17 +48,36 @@ export async function launch(): Promise<Browser> {
   return chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 }
 
-export async function newContext(browser: Browser, app: App): Promise<BrowserContext> {
+export type Mode = 'doc' | 'editor' | 'split';
+
+/**
+ * Fixa o modo de edição e liga o gancho de teste (`window.__cmView`) antes de a página carregar.
+ * Os testes antigos esperam o painel duplo, então o padrão é `split`; `null` deixa o app escolher.
+ */
+export async function setMode(ctx: BrowserContext, mode: Mode | null = 'split'): Promise<void> {
+  await ctx.addInitScript((m) => {
+    localStorage.setItem('superapp.test', '1');
+    if (m) localStorage.setItem('superapp.mode', m);
+  }, mode);
+}
+
+export async function newContext(browser: Browser, app: App, opts: { mode?: Mode | null } = {}): Promise<BrowserContext> {
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 800 } });
   ctx.setDefaultTimeout(5000);
   await ctx.addCookies([{ name: 'sa', value: app.run.token, url: app.base }]);
+  await setMode(ctx, opts.mode === undefined ? 'split' : opts.mode);
   return ctx;
 }
 
 /** Sobe o app com os arquivos dados, abre a página já autenticada e limpa tudo no fim. */
-export async function withPage(browser: Browser, files: Record<string, string>, fn: (page: Page, app: App) => Promise<void>): Promise<void> {
+export async function withPage(
+  browser: Browser,
+  files: Record<string, string>,
+  fn: (page: Page, app: App) => Promise<void>,
+  opts: { mode?: Mode | null } = {},
+): Promise<void> {
   const app = await startApp(files);
-  const ctx = await newContext(browser, app);
+  const ctx = await newContext(browser, app, opts);
   try {
     const page = await ctx.newPage();
     await page.goto(app.base);

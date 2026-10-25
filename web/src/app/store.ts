@@ -1,4 +1,4 @@
-import { computed, signal } from '@preact/signals';
+import { computed, effect, signal } from '@preact/signals';
 import { api, ApiError, type TreeNode, type VaultInfo } from '../api/client.ts';
 import { basename, dirname, join, kindOf, sanitizePath, type Kind } from './files.ts';
 import { ask, confirmBox } from './dialog.ts';
@@ -11,7 +11,26 @@ export const recents = signal<string[]>([]);
 export const tree = signal<TreeNode | null>(null);
 export const error = signal<string | null>(null);
 export const selectedDir = signal('');
-export const mode = signal<'editor' | 'split' | 'preview'>('split');
+/** doc = Documento (padrão); editor = Código; split = Dividido; preview = Ler (só para imprimir). */
+export type Mode = 'doc' | 'editor' | 'split' | 'preview';
+const MODE_KEY = 'superapp.mode';
+
+function readMode(): Mode {
+  try {
+    const v = localStorage.getItem(MODE_KEY);
+    if (v === 'doc' || v === 'editor' || v === 'split') return v;
+  } catch { /* sem armazenamento: usa o padrão */ }
+  return 'doc';
+}
+
+export const mode = signal<Mode>(readMode());
+
+// "Ler" é temporário (imprimir); só os três modos de edição são lembrados.
+effect(() => {
+  const m = mode.value;
+  if (m === 'preview') return;
+  try { localStorage.setItem(MODE_KEY, m); } catch { /* ignora */ }
+});
 export interface Picker {
   title: string;
   filter?: (path: string) => boolean;

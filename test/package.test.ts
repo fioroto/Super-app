@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Browser } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { launch } from './helpers.ts';
+import { launch, setMode } from './helpers.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
 let tmp: string;
@@ -89,6 +89,7 @@ describe('pacote de distribuição', () => {
 
   it('a interface do pacote abre a primeira tela rápido, sem chamar a internet', async () => {
     const ctx = await browser.newContext();
+    await setMode(ctx);
     await ctx.addCookies([{ name: 'sa', value: token, url: base }]);
     const page = await ctx.newPage();
     const external: string[] = [];
