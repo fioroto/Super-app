@@ -8,6 +8,7 @@ import {
   PathError, cookieToken, hostAllowed, newToken, originAllowed, tokenValid,
 } from './security.ts';
 import { ConflictError, NotFoundError, Vault } from './vault.ts';
+import { watchVault, type VaultWatcher } from './watcher.ts';
 
 export interface Options {
   vaultPath?: string;
@@ -132,22 +133,42 @@ async function listDirs(target: string): Promise<{ path: string; parent: string 
 export async function startServer(opts: Options): Promise<Running> {
   const token = opts.token ?? newToken();
   let vault: Vault | null = null;
+  let watcher: VaultWatcher | null = null;
   let port = 0;
+  const listeners = new Set<ServerResponse>();
+
+  const broadcast = (paths: string[]) => {
+    const msg = `data: ${JSON.stringify({ paths })}\n\n`;
+    for (const res of listeners) res.write(msg);
+  };
+
+  const attach = (v: Vault) => {
+    watcher?.close();
+    vault = v;
+    watcher = watchVault(v.root, broadcast);
+  };
 
   const setVault = async (dir: string): Promise<void> => {
+    let v: Vault;
     try {
-      vault = await Vault.open(dir);
+      v = await Vault.open(dir);
     } catch (e) {
       throw new HttpError(400, e instanceof PathError ? e.message : 'não consegui abrir a pasta');
     }
-    await saveRecents(opts.home, vault.root);
+    attach(v);
+    await saveRecents(opts.home, v.root);
   };
 
   if (opts.vaultPath) await setVault(opts.vaultPath);
   else {
     const last = (await loadRecents(opts.home))[0];
-    if (last) vault = await Vault.open(last).catch(() => null);
+    const v = last ? await Vault.open(last).catch(() => null) : null;
+    if (v) attach(v);
   }
+
+  // Mantém a conexão de eventos viva atrás de proxies e antivírus.
+  const ping = setInterval(() => { for (const res of listeners) res.write(': ping\n\n'); }, 25_000);
+  ping.unref();
 
   const needVault = (): Vault => {
     if (!vault) throw new HttpError(409, 'nenhuma pasta aberta', { code: 'no-vault' });
@@ -167,6 +188,13 @@ export async function startServer(opts: Options): Promise<Running> {
         const body = await readJson(req);
         await setVault(str(body.path, 'path'));
         return json(res, 200, { vault: { name: vault!.name, root: vault!.root } });
+      }
+      case 'GET /api/events': {
+        res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
+        res.write(': ok\n\n');
+        listeners.add(res);
+        req.on('close', () => listeners.delete(res));
+        return;
       }
       case 'GET /api/tree':
         return json(res, 200, await needVault().tree());
@@ -285,6 +313,8 @@ export async function startServer(opts: Options): Promise<Running> {
   return {
     url, port, token,
     close: () => new Promise((resolve) => {
+      clearInterval(ping);
+      watcher?.close();
       server.closeAllConnections();
       server.close(() => resolve());
     }),
