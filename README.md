@@ -10,6 +10,8 @@ Precisa do Node.js 22 ou mais novo.
 2. No Windows, dê dois cliques em `iniciar.bat`. No Linux ou macOS, rode `./iniciar.sh`.
 3. Escolha a pasta das notas. Uma pasta vazia serve.
 
+**Pelo git**, em vez do `.zip`: `git clone -b ccr-8058b25a-u6woo8 https://github.com/fioroto/Super-app.git` e dois cliques em `iniciar.bat` (ou `./iniciar.sh`) dentro de `Super-app`. Na primeira vez ele instala as dependências e compila, o que leva 1 a 2 minutos e precisa de internet para o npm. Depois de um `git pull`, é só abrir de novo: ele recompila sozinho se o código mudou.
+
 O app abre no navegador. Para abrir uma pasta direto: `iniciar.bat "C:\Notas"` ou `./iniciar.sh ~/Notas`. Sem pasta, ele lembra a última usada.
 
 ## O que faz

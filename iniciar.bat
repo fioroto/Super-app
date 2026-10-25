@@ -12,10 +12,22 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem Clone do git: instala na primeira vez e compila quando o código mudou.
+if exist "package.json" (
+  node scripts\preparar.mjs
+  if errorlevel 1 (
+    echo.
+    pause
+    exit /b 1
+  )
+)
+
 if not exist "dist\server.mjs" (
   echo.
   echo Arquivo dist\server.mjs não encontrado.
-  echo Descompacte o arquivo .zip inteiro antes de abrir este programa.
+  echo Parece que o iniciar.bat foi aberto de dentro do .zip.
+  echo Clique com o botão direito no super-app.zip, escolha "Extrair tudo"
+  echo e abra o iniciar.bat da pasta extraída.
   echo.
   pause
   exit /b 1
