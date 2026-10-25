@@ -14,7 +14,7 @@ import { Tree } from './Tree.tsx';
 import { VaultPicker } from './VaultPicker.tsx';
 import { applyTheme, cycleTheme, theme } from './theme.ts';
 import {
-  activate, active, activePath, boot, closeFile, docs, error, diffView, historyFor, keepMine, mode, newBoard, newDrawing, newFolder, newNote, openQuick, picker, save, takeDisk, tool, toggleRaw, tree, vault,
+  activate, active, activePath, boot, closeFile, docs, error, historyFor, keepMine, mergeFor, mode, newBoard, newDrawing, newFolder, newNote, openQuick, picker, save, takeDisk, tool, toggleRaw, tree, vault,
 } from './store.ts';
 import { api } from '../api/client.ts';
 
@@ -22,9 +22,9 @@ function LazyHistory() {
   const m = useLazy(() => import('../history/HistoryPanel.tsx'));
   return m ? <m.HistoryPanel /> : null;
 }
-function LazyDiff() {
-  const m = useLazy(() => import('../history/DiffDialog.tsx'));
-  return m ? <m.DiffDialog /> : null;
+function LazyMerge() {
+  const m = useLazy(() => import('../history/MergeDialog.tsx'));
+  return m ? <m.MergeDialog /> : null;
 }
 
 function LazyTool() {
@@ -133,7 +133,7 @@ export function App() {
               <div class="banner">
                 <span>Este arquivo mudou no disco enquanto você editava.</span>
                 <button class="btn" onClick={() => keepMine(d.path)}>Manter a minha</button>
-                <button class="btn" disabled={!d.disk} onClick={() => d.disk && (diffView.value = { title: `Diferença em ${d.path}`, path: d.path, left: d.disk.content, right: d.text, leftLabel: 'No disco', rightLabel: 'No editor (a minha)' })}>Ver diferença</button>
+                <button class="btn" disabled={!d.disk} title="Comparar e escolher, trecho a trecho, entre o disco e o editor" onClick={() => (mergeFor.value = d.path)}>Ver diferença</button>
                 <button class="btn" disabled={!d.disk} onClick={() => takeDisk(d.path)}>Carregar do disco</button>
               </div>
             )}
@@ -166,7 +166,7 @@ export function App() {
       {picker.value && <QuickOpen />}
       {diagramDialog.value && <DiagramDialog key={diagramDialog.value.from ?? -1} />}
       {historyFor.value && <LazyHistory />}
-      {diffView.value && <LazyDiff />}
+      {mergeFor.value && <LazyMerge />}
       {tool.value && <LazyTool />}
       <Dialog />
     </div>

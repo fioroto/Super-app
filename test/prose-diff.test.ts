@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cellOf, markSegs, proseDiff, splitBlocks, type Change, type Row } from '../web/src/history/proseDiff.ts';
+import { applyEdits, cellOf, markSegs, proseDiff, revertEdits, splitBlocks, type Change, type Row } from '../web/src/history/proseDiff.ts';
 
 const RELATORIO = [
   '# Relatório mensal',
@@ -144,5 +144,46 @@ describe('comparar texto', () => {
 
   it('textos iguais não têm mudança', () => {
     expect(proseDiff(RELATORIO, RELATORIO, 'md').changes).toEqual([]);
+  });
+});
+
+describe('voltar trechos', () => {
+  const revert = (a: string, b: string, pick: (c: Change) => boolean = () => true) => {
+    const d = proseDiff(a, b, 'md');
+    return applyEdits(b, revertEdits(d, d.changes.filter(pick).map((c) => c.id), b));
+  };
+
+  it('cada tipo de mudança volta ao texto antigo', () => {
+    expect(revert('A um.\n\nB dois.\n', 'A um.\n\nB três.\n')).toBe('A um.\n\nB dois.\n'); // mudado
+    expect(revert('A.\n\nC.\n', 'A.\n\nB novo.\n\nC.\n')).toBe('A.\n\nC.\n'); // adicionado no meio
+    expect(revert('A.\n', 'A.\n\nB novo.\n')).toBe('A.\n'); // adicionado no fim
+    expect(revert('B velho.\n\nA.\n', 'A.\n')).toBe('B velho.\n\nA.\n'); // removido do começo
+    expect(revert('A.\n\nB velho.\n\nC.\n', 'A.\n\nC.\n')).toBe('A.\n\nB velho.\n\nC.\n'); // removido do meio
+    expect(revert('- a\n- b\n- c\n', '- a\n- c\n')).toBe('- a\n- b\n- c\n'); // item volta colado aos vizinhos
+  });
+
+  it('parágrafo movido volta para o lugar', () => {
+    const a = 'Primeiro parágrafo comprido o bastante para contar como movido.\n\nSegundo.\n\nTerceiro.\n';
+    const b = 'Segundo.\n\nTerceiro.\n\nPrimeiro parágrafo comprido o bastante para contar como movido.\n';
+    const d = proseDiff(a, b, 'md');
+    expect(d.changes.map((c) => c.kind)).toEqual(['moved']);
+    expect(applyEdits(b, revertEdits(d, [0], b))).toBe(a);
+  });
+
+  it('voltar todas as mudanças devolve o texto antigo', () => {
+    const novo = RELATORIO
+      .replace('1,2%', '1,4%')
+      .replace('## Custos', 'Parágrafo novo, escrito agora.\n\n## Custos')
+      .replace('\n\nOs custos ficaram estáveis e dentro do orçamento previsto para o trimestre inteiro.', '');
+    expect(revert(RELATORIO, novo)).toBe(RELATORIO);
+  });
+
+  it('mesclar: em cada trecho, um lado', () => {
+    const disco = 'Um.\n\nDois do disco.\n\nTrês.\n';
+    const meu = 'Meu um.\n\nDois.\n\nTrês.\n';
+    const d = proseDiff(disco, meu, 'md');
+    expect(d.changes.length).toBe(2);
+    // Fica o meu no primeiro trecho e o do disco no segundo.
+    expect(applyEdits(meu, revertEdits(d, [1], meu))).toBe('Meu um.\n\nDois do disco.\n\nTrês.\n');
   });
 });

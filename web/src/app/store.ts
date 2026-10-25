@@ -190,7 +190,8 @@ export async function reloadFromDisk(path: string): Promise<void> {
 
 /** Telas que carregam sob demanda: histórico de versões e comparação de textos. */
 export const historyFor = signal<string | null>(null);
-export const diffView = signal<{ title: string; path: string; left: string; right: string; leftLabel: string; rightLabel: string } | null>(null);
+/** Nota em conflito aberta para escolher, trecho a trecho, entre o disco e o editor. */
+export const mergeFor = signal<string | null>(null);
 /** Ferramentas avulsas (carregam sob demanda): comparar JSON, JSON para tabela e planilha para tabela Markdown. */
 export const tool = signal<'json' | 'table' | 'sheet' | null>(null);
 
@@ -198,6 +199,14 @@ export function keepMine(path: string): void {
   const d = find(path);
   if (!d) return;
   patch(path, { hash: d.disk?.hash ?? null, disk: undefined, state: 'dirty' });
+  void save(path);
+}
+
+/** Conflito resolvido trecho a trecho: o texto mesclado vai para o editor e é gravado por cima da versão do disco. */
+export function resolveConflict(path: string, text: string): void {
+  const d = find(path);
+  if (!d?.disk) return;
+  patch(path, { text, hash: d.disk.hash, disk: undefined, state: 'dirty', rev: d.rev + 1 });
   void save(path);
 }
 

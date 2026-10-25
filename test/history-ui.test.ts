@@ -38,12 +38,61 @@ describe('histórico na interface', () => {
       await page.getByRole('button', { name: 'Restaurar esta versão' }).click();
       await expect.poll(diskOf(app, 'a.md'), { timeout: 5000 }).toBe('linha 1\nlinha 2\nlinha 3\n');
       await expect.poll(() => page.locator('.cm-content').innerText()).toContain('linha 2');
-      expect(await page.locator('.cm-content').innerText()).not.toContain('EDITADA');
+      await expect.poll(() => page.locator('.cm-content').innerText()).not.toContain('EDITADA');
       expect(await page.locator('.overlay').count()).toBe(0);
 
       // O estado antes de restaurar virou uma versão nova.
       await page.getByRole('button', { name: 'Histórico' }).click();
       await expect.poll(() => page.locator('.versions li').count()).toBe(2);
+    });
+  });
+
+  it('"Voltar este trecho" desfaz só aquela mudança na nota, e o Ctrl+Z desfaz o voltar', async () => {
+    await withPage(browser, { 'a.md': 'Primeiro parágrafo.\n\nSegundo parágrafo.\n' }, async (page, app) => {
+      await open(page, 'a.md');
+      await page.locator('.cm-content').click();
+      await page.keyboard.press('Control+End'); // linha vazia do fim
+      await page.keyboard.press('ArrowLeft');
+      await page.keyboard.press('ArrowLeft'); // antes do ponto final
+      await page.keyboard.type(' NOVO');
+      await page.keyboard.press('Control+Home');
+      await page.keyboard.press('End');
+      await page.keyboard.press('ArrowLeft');
+      await page.keyboard.type(' OUTRO');
+      await expect.poll(diskOf(app, 'a.md'), { timeout: 5000 }).toBe('Primeiro parágrafo OUTRO.\n\nSegundo parágrafo NOVO.\n');
+
+      await page.getByRole('button', { name: 'Histórico' }).click();
+      await expect.poll(() => page.locator('.pdiff-row.changed').count()).toBe(2);
+      await page.locator('.pdiff-row.changed').nth(1).getByRole('button', { name: 'Voltar este trecho' }).click();
+      await expect.poll(diskOf(app, 'a.md'), { timeout: 5000 }).toBe('Primeiro parágrafo OUTRO.\n\nSegundo parágrafo.\n');
+      await expect.poll(() => page.locator('.pdiff-row.changed').count()).toBe(1);
+
+      await page.getByRole('button', { name: 'Fechar' }).click();
+      await page.locator('.cm-content').click();
+      await page.keyboard.press('Control+z');
+      await expect.poll(diskOf(app, 'a.md'), { timeout: 5000 }).toBe('Primeiro parágrafo OUTRO.\n\nSegundo parágrafo NOVO.\n');
+    });
+  });
+
+  it('conflito: escolher o trecho do disco num lugar e manter o meu no outro', async () => {
+    await withPage(browser, { 'a.md': 'Um.\n\nDois.\n' }, async (page, app) => {
+      await open(page, 'a.md');
+      await page.locator('.cm-content').click();
+      await page.keyboard.press('Control+Home');
+      await page.keyboard.type('Meu ');
+      await writeFile(path.join(app.vault, 'a.md'), 'Um.\n\nDois do disco.\n');
+      await page.getByRole('button', { name: 'Ver diferença' }).click();
+      await expect.poll(() => page.locator('.merge .pdiff-row.changed').count()).toBe(2);
+      expect(await page.locator('.merge .actions .muted').innerText()).toContain('0 de 2 do disco');
+
+      await page.locator('.pdiff-row[data-change="1"]').getByRole('button', { name: 'Do disco' }).click();
+      expect(await page.locator('.pdiff-row[data-change="1"]').getByRole('button', { name: 'Do disco' }).getAttribute('aria-pressed')).toBe('true');
+      await page.getByRole('button', { name: 'Aplicar' }).click();
+
+      await expect.poll(diskOf(app, 'a.md'), { timeout: 5000 }).toBe('Meu Um.\n\nDois do disco.\n');
+      expect(await page.locator('.overlay').count()).toBe(0);
+      await expect.poll(() => page.locator('.banner').count()).toBe(0);
+      await expect.poll(() => page.locator('.cm-content').innerText()).toContain('Dois do disco.');
     });
   });
 

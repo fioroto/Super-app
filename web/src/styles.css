@@ -327,7 +327,17 @@ mark.a { background: color-mix(in srgb, var(--ok) 24%, transparent); }
 .pdiff-skip:hover { color: var(--fg); }
 .pdiff-code { margin: 0; font: 12.5px/1.55 var(--mono); white-space: pre-wrap; }
 .pdiff-txt { margin: 0; white-space: pre-wrap; }
+.pdiff.wide .pdiff-labels, .pdiff.wide .pdiff-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 6.5rem; }
+.pick { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.pick button { padding: 2px 4px; font-size: 12px; border: 1px solid var(--input); color: var(--muted); }
+.pick button:hover { color: var(--fg); }
+.pick button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.merge header { gap: 12px; }
+.merge header strong { flex: 1; }
+.merge-all { display: flex; gap: 8px; }
+.merge > .history-diff { height: min(66vh, 600px); }
 @media (max-width: 800px) {
+  .pdiff.wide .pdiff-row { grid-template-columns: minmax(0, 1fr) 6.5rem; }
   .pdiff-labels { display: none; }
   .pdiff-row { grid-template-columns: minmax(0, 1fr) 2.25rem; }
   .pdiff-row > .pdiff-cell, .pdiff-right { grid-column: 1; border-right: 0; }

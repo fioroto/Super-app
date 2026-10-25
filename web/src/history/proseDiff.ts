@@ -435,3 +435,52 @@ export function cellOf(block: Block, segs: Seg[] | undefined, cls: 'd' | 'a', mo
   if (mode === 'txt') return { html: `<p class="pdiff-txt">${segs ? markSegs(segs, cls, true) : escapeHtml(block.text)}</p>` };
   return { md: segs ? markSegs(segs, cls) : block.text };
 }
+
+// ---------- voltar um trecho ----------
+
+export interface Edit { from: number; to: number; insert: string; order: number }
+
+/** Item de lista e linha de tabela ficam colados ao vizinho; o resto, separado por linha em branco. */
+const separator = (b: Block) => (b.kind === 'item' || b.kind === 'row' ? '\n' : '\n\n');
+
+/**
+ * As edições que trocam, no texto da direita, cada mudança escolhida pelo lado esquerdo.
+ * Mudado: troca o bloco. Adicionado: apaga o bloco e a separação. Removido: insere onde estava. Movido: as duas coisas.
+ */
+export function revertEdits(diff: ProseDiff, ids: Iterable<number>, right: string): Edit[] {
+  const out: Edit[] = [];
+  const remove = (b: Block, order: number) => {
+    let from = b.from, to = b.to;
+    const after = /^(?:[ \t]*\r?\n)+/.exec(right.slice(to))?.[0] ?? '';
+    if (to + after.length < right.length) to += after.length; // tem texto depois: leva a separação de depois
+    else from -= /(?:\r?\n[ \t]*)+$/.exec(right.slice(0, from))?.[0].length ?? 0; // é o último: leva a de antes
+    out.push({ from, to, insert: '', order });
+    return { from, to };
+  };
+  const insert = (b: Block, anchor: number | null, order: number, skip?: { from: number; to: number }) => {
+    let at = anchor;
+    if (at !== null && skip && at > skip.from && at <= skip.to) at = skip.from;
+    if (at === null || at === 0) out.push({ from: 0, to: 0, insert: right.trim() ? b.text + separator(b) : `${b.text}\n`, order });
+    else out.push({ from: at, to: at, insert: separator(b) + b.text, order });
+  };
+  for (const id of ids) {
+    const c = diff.changes[id];
+    if (!c) continue;
+    if (c.kind === 'changed') out.push({ from: c.right!.from, to: c.right!.to, insert: c.left!.text, order: id });
+    else if (c.kind === 'added') remove(c.right!, id);
+    else if (c.kind === 'removed') insert(c.left!, c.anchor, id);
+    else insert(c.left!, c.anchor, id, remove(c.right!, id));
+  }
+  return out;
+}
+
+/**
+ * Aplica as edições de trás para a frente, para uma não mexer na posição da outra.
+ * No mesmo ponto, a que apaga mais vai antes; duas inserções no mesmo ponto saem na ordem dos trechos.
+ */
+export function applyEdits(text: string, edits: Edit[]): string {
+  const sorted = [...edits].sort((a, b) => b.from - a.from || b.to - a.to || b.order - a.order);
+  let out = text;
+  for (const e of sorted) out = out.slice(0, e.from) + e.insert + out.slice(e.to);
+  return out;
+}

@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { renderMarkdown } from '../preview/markdown.ts';
 import { DiffView } from './DiffView.tsx';
-import { cellOf, proseDiff, type Block, type Cell, type Change, type Mode, type Row, type Seg } from './proseDiff.ts';
+import { cellOf, proseDiff, type Block, type Cell, type Change, type Mode, type ProseDiff, type Row, type Seg } from './proseDiff.ts';
 
 /** Notas e texto puro comparam por parágrafo e palavra; o resto (json, yaml, csv) continua linha a linha. */
 export const proseMode = (path: string): Mode | null => (/\.(md|markdown)$/i.test(path) ? 'md' : /\.txt$/i.test(path) ? 'txt' : null);
@@ -39,15 +39,18 @@ function summary(s: { added: number; removed: number; changed: number; moved: nu
 
 /**
  * Duas versões lado a lado, alinhadas por parágrafo, com a palavra mudada em destaque e o texto formatado.
- * `actions` desenha botões na linha de cada mudança (voltar o trecho, escolher o lado no conflito).
+ * `actions` desenha botões na linha de cada mudança (voltar o trecho, escolher o lado no conflito);
+ * `diff` evita refazer a comparação quando quem chama já a tem.
  */
-export function ProseDiffView({ left, right, leftLabel, rightLabel, path, actions }: {
+export function ProseDiffView({ left, right, leftLabel, rightLabel, path, actions, diff: given, wide }: {
   left: string; right: string; leftLabel: string; rightLabel: string; path: string;
-  actions?: (change: Change) => ComponentChildren;
+  actions?: (change: Change, diff: ProseDiff) => ComponentChildren;
+  diff?: ProseDiff;
+  wide?: boolean;
 }) {
   const mode = proseMode(path) ?? 'txt';
   const [raw, setRaw] = useState(false);
-  const diff = useMemo(() => proseDiff(left, right, mode), [left, right, mode]);
+  const diff = useMemo(() => given ?? proseDiff(left, right, mode), [given, left, right, mode]);
   const [opened, setOpened] = useState<ReadonlySet<Row>>(new Set());
   const [cur, setCur] = useState(-1);
   const body = useRef<HTMLDivElement>(null);
@@ -114,13 +117,14 @@ export function ProseDiffView({ left, right, leftLabel, rightLabel, path, action
             </span>
           )}
         </div>
-        <div class="pdiff-act">{actions && r.side !== 'left' && actions(c)}</div>
+        {/* Removido só aparece à esquerda; movido ganha o botão na posição nova. */}
+        <div class="pdiff-act">{actions && (c.kind === 'removed' || r.side !== 'left') && actions(c, diff)}</div>
       </div>
     );
   };
 
   return (
-    <div class="pdiff">
+    <div class={`pdiff${wide ? ' wide' : ''}`}>
       <div class="pdiff-head">
         <div class="pdiff-bar">
           <span class="pdiff-sum">{summary(diff.stats, total)}</span>

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { api, type Version } from '../api/client.ts';
 import { basename } from '../app/files.ts';
 import { docs, error, historyFor, reloadFromDisk } from '../app/store.ts';
+import { getView } from '../editor/Editor.tsx';
+import { revertEdits, type Change, type ProseDiff } from './proseDiff.ts';
 import { DiffView } from './DiffView.tsx';
 import { ProseDiffView, proseMode } from './ProseDiffView.tsx';
 
@@ -39,6 +41,13 @@ export function HistoryPanel() {
     }
   };
 
+  /** Volta um trecho na nota aberta, como uma edição comum: o Ctrl+Z desfaz e o salvamento automático grava. */
+  const revert = (c: Change, diff: ProseDiff) => {
+    const view = getView();
+    if (!view || view.state.doc.toString() !== current) { error.value = 'A nota mudou enquanto a comparação abria. Tente de novo.'; return; }
+    view.dispatch({ changes: revertEdits(diff, [c.id], current).map(({ from, to, insert }) => ({ from, to, insert })), userEvent: 'input' });
+  };
+
   return (
     <div class="overlay" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div class="dialog history" onKeyDown={(e) => e.key === 'Escape' && close()} tabIndex={-1} ref={(el) => el?.focus()}>
@@ -59,7 +68,10 @@ export function HistoryPanel() {
             </ul>
             <div class="history-diff">
               {old === null ? <p class="muted pad">Carregando…</p> : (
-                proseMode(path) ? <ProseDiffView left={old} right={current} leftLabel="Versão escolhida" rightLabel="Atual (no editor)" path={path} />
+                proseMode(path) ? (
+                  <ProseDiffView left={old} right={current} leftLabel="Versão escolhida" rightLabel="Atual (no editor)" path={path}
+                    actions={(c, diff) => <button type="button" class="icon-btn" aria-label="Voltar este trecho" title="Voltar este trecho para a versão escolhida (Ctrl+Z na nota desfaz)" onClick={() => revert(c, diff)}>↶</button>} />
+                )
                   : <DiffView left={old} right={current} leftLabel="Versão escolhida" rightLabel="Atual (no editor)" />
               )}
             </div>
