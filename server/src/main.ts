@@ -16,6 +16,8 @@ const run = await startServer({
   webRoot: process.env.SUPERAPP_WEB ?? join(here, 'web'),
   home: process.env.SUPERAPP_HOME ?? here,
   open: !args.includes('--no-open') && !process.env.SUPERAPP_NO_OPEN,
+  // Só o `npm run dev` define isto: o servidor reinicia a cada mudança e o cookie do navegador precisa continuar valendo.
+  token: process.env.SUPERAPP_DEV_TOKEN || undefined,
 });
 
 console.log(`Super-app rodando. Se o navegador não abrir, use:\n  ${run.url}\nCtrl+C para encerrar.`);

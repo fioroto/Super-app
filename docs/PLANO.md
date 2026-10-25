@@ -251,3 +251,37 @@ Nada de testar módulo interno (diff, watcher, store) isoladamente: eles se prov
 5. **Offline.** Rodar a suíte E2E bloqueando todo host que não seja `127.0.0.1` (`page.route`). Qualquer chamada externa reprova o teste.
 6. **Interoperabilidade (manual).** Abrir o vault no Obsidian (Kanban e Excalidraw instalados) e no VS Code; conferir que quadro, desenho e Mermaid abrem e editam lá.
 7. **Instalação.** Descompactar o `.zip` numa pasta limpa e rodar `iniciar.bat` sem `npm install`.
+
+
+---
+
+## Resultado (o que foi feito e o que mudou em relação ao plano)
+
+Todas as fases foram implementadas, com testes de navegador, de API e de conversores (`npm test`).
+
+**Medido no pacote final**
+
+| Item | Meta | Resultado |
+|---|---|---|
+| JS ao abrir o app | ≤ 220 KB gzip | 156 KB |
+| `.zip` | ≤ 5 MB | 3,8 MB |
+| Servidor pronto | < 300 ms | ~80 ms |
+| Primeira tela | < 500 ms | ~70 ms |
+| Memória do servidor parado | ≤ 60 MB | ~57 MB (a base do Node já é ~40 MB) |
+| Heap JS com nota de 1.000 linhas | ≤ 30 MB | abaixo de 30 MB (o teste reprova se passar) |
+
+**Mudanças em relação ao plano**
+
+1. **Desenho num iframe, não num `import()`.** Um módulo carregado fica na memória até a aba fechar. Com o desenho em `/canvas.html`, fechar a aba descarta o iframe inteiro: heap de 7,0 MB para 3,7 MB. O app principal não conhece React.
+2. **Mermaid com layout `dagre` forçado.** O padrão do Mermaid 12 carrega o motor ELK (440 KB gzip) até para um fluxograma. Com `dagre`, um fluxograma custa 61 KB. O ELK foi trocado por um stub no build (`layout: elk` mostra um aviso).
+3. **CodeMirror com linguagem markdown própria.** O pacote `@codemirror/lang-markdown` traz os analisadores de HTML, CSS e JS. Montar a linguagem direto de `@lezer/markdown` poupou ~70 KB gzip.
+4. **"Converter Mermaid em canvas" não foi feito.** A conversão vem de um pacote à parte (`@excalidraw/mermaid-to-excalidraw`) que embute uma segunda cópia do Mermaid. Não vale o peso.
+5. **Escrita do desenho em JSON puro; leitura também do formato comprimido** (`compressed-json`, padrão do plugin do Obsidian), com `lz-string` só dentro do iframe.
+6. **Testes em dois pontos** (decisão do usuário): o app rodando (Vitest + Playwright) e os conversores de formato. Tudo roda com `vitest`; não há segundo executor de testes.
+7. **Versões:** TypeScript 7, Vite 8, Vitest 5, Preact 11, React 18.3.1 (dentro do iframe; o Excalidraw 0.18 é feito para o 18).
+
+**Ainda não verificado (precisa de uma pessoa)**
+
+- Abrir um quadro e um desenho no **Obsidian real** (plugins Kanban e Excalidraw). Os formatos seguem a documentação e arquivos descritos por terceiros; não havia Obsidian no ambiente.
+- Rodar `iniciar.bat` no **Windows** e o vault dentro do **OneDrive** (a regravação com nova tentativa existe, mas não foi exercitada lá).
+- O workflow do **GitHub Actions** (escrito, nunca executado).

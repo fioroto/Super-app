@@ -22,13 +22,7 @@ jobs:
       - run: npx playwright-core install --with-deps chromium
       - run: npm test
 
-      - name: Empacotar
-        run: |
-          mkdir pkg
-          cp -r dist pkg/
-          cp iniciar.bat iniciar.sh pkg/
-          cp README.md pkg/LEIAME.md
-          cd pkg && zip -r ../super-app.zip .
+      - run: npm run package
 
       - run: npm run size
 

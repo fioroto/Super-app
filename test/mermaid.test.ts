@@ -46,6 +46,15 @@ describe('mermaid no preview', () => {
     });
   });
 
+  it('layout elk não vem no pacote: mostra um aviso claro em vez de travar', async () => {
+    const md = '```mermaid\n---\nconfig:\n  layout: elk\n---\nflowchart TD\n  A --> B\n```\n';
+    await withPage(browser, { 'elk.md': md }, async (page) => {
+      await open(page, 'elk.md');
+      await page.locator('.preview .mermaid-error').waitFor({ timeout: 15_000 });
+      expect(await page.locator('.preview .mermaid-error').innerText()).toContain('elk');
+    });
+  });
+
   it('muda o desenho quando o texto muda', async () => {
     await withPage(browser, { 'fluxo.md': FLOW }, async (page) => {
       await open(page, 'fluxo.md');

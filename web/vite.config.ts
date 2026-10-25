@@ -21,6 +21,7 @@ const excalidrawFonts = (): Plugin => ({
 export default defineConfig({
   root: here,
   plugins: [preact(), excalidrawFonts()],
+  resolve: { alias: { 'elkjs/lib/elk.bundled.js': path.join(here, 'src/diagrams/mermaid/elkStub.ts') } },
   build: {
     outDir: '../dist/web',
     emptyOutDir: true,
