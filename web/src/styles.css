@@ -77,9 +77,7 @@ input[type=checkbox] { accent-color: var(--accent); }
 .side-foot { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .side-foot button { padding: 6px 12px; color: var(--muted); }
 .side-foot button:hover { background: var(--bg-3); color: var(--fg); }
-.side-foot-tools { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); }
-.side-foot-tools button { padding: 6px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.side-foot-tools button + button { border-left: 1px solid var(--line); }
+.side-foot-tools { display: flex; flex-direction: column; border-bottom: 1px solid var(--line); }
 
 /* árvore */
 .tree { overflow: auto; padding: 4px 0; flex: 1; }
@@ -200,17 +198,31 @@ input[type=checkbox] { accent-color: var(--accent); }
 .tool header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tool-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.tool-label { font-size: 12px; color: var(--muted); }
+.tool-label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; color: var(--muted); }
+.link-btn { color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+.link-btn:hover { color: var(--fg); }
+.json-source.over textarea, .json-source.over .json-file { border-style: dashed; border-color: var(--ring); background: var(--bg-3); }
+.json-file { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: min(26vh, 240px); padding: 10px; border: 1px solid var(--input); border-radius: var(--radius); font: 13px/1.6 var(--mono); overflow-wrap: anywhere; }
 .tool-side textarea { resize: none; height: min(26vh, 240px); padding: 10px; border: 1px solid var(--input); border-radius: var(--radius); background: var(--bg); color: var(--fg); font: 13px/1.6 var(--mono); tab-size: 4; white-space: pre; }
 .tool-side textarea[readonly] { background: var(--bg-3); }
 .tool-err { margin: 0; font-size: 12.5px; color: var(--bad); overflow-wrap: anywhere; }
 .tool-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
-.tool .tool-opts label.inline { flex-direction: row; align-items: center; gap: 6px; }
+.tool label.inline { flex-direction: row; align-items: center; gap: 6px; }
+.tool-cols { border: 1px solid var(--line); border-radius: var(--radius); }
+.tool-cols summary { padding: 6px 10px; cursor: pointer; font-weight: 500; }
+.tool-cols-actions { display: flex; gap: 8px; padding: 0 10px 8px; }
+.tool-cols-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 12px; max-height: 180px; overflow: auto; padding: 0 10px 10px; font: 12.5px/1.5 var(--mono); }
+.tool-cols-list label { overflow-wrap: anywhere; }
+.json-out { height: min(32vh, 300px); }
+.tool-table .json-source textarea, .tool-table .json-file { height: min(20vh, 200px); }
+.json-out .tool-preview th, .json-out .tool-preview td { white-space: nowrap; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; }
+.json-out > * { min-height: 0; max-height: none; }
+.json-out .tool-side textarea { flex: 1; height: auto; background: var(--bg-3); }
 .tool-opts select { height: var(--control-h); padding: 0 8px; background: var(--bg); color: var(--fg); border: 1px solid var(--input); border-radius: var(--radius); }
 .tool-opts .seg { margin-left: auto; }
 .tool-result { min-height: 90px; max-height: min(34vh, 320px); overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); }
 .tool-result .pad { padding: 10px; margin: 0; }
-.tool-preview { padding: 8px; max-width: none; margin: 0; }
+.tool-preview { padding: 8px; max-width: none; margin: 0; overflow-wrap: normal; }
 .tool-preview td, .tool-preview th { white-space: pre-line; }
 .tool-preview .r { text-align: right; }
 .changes { width: 100%; border-collapse: collapse; font: 12.5px/1.5 var(--mono); }
@@ -220,7 +232,7 @@ input[type=checkbox] { accent-color: var(--accent); }
 .changes tr.k-removed td { background: color-mix(in srgb, var(--bad) 14%, transparent); }
 .tool .actions { display: flex; align-items: center; gap: 8px; margin: 0; }
 .tool .actions .muted { flex: 1; font-size: 12px; }
-@media (max-width: 800px) { .tool-grid { grid-template-columns: 1fr; } .tool-side textarea { height: 18vh; } }
+@media (max-width: 800px) { .tool-grid { grid-template-columns: 1fr; } .tool-side textarea, .json-file { height: 18vh; } .json-out { height: auto; } .json-out .tool-result { max-height: 30vh; } .json-out .tool-side textarea { height: 18vh; } }
 
 /* canvas (iframe do Excalidraw) */
 .canvas-frame { flex: 1; width: 100%; min-height: 0; border: 0; background: var(--bg); }

@@ -1,28 +1,21 @@
 import { signal } from '@preact/signals';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
 import { DiffView } from '../history/DiffView.tsx';
-import { canonical, changesToMarkdown, compareJson, KIND_LABEL, parseJson, show, summary, type ParseResult } from './jsonDiff.ts';
+import { canonical, changesToMarkdown, compareJson, KIND_LABEL, parseJson, problem, show, summary } from './jsonDiff.ts';
+import { clearSource, JsonSource, source, swapSources } from './JsonSource.tsx';
 import { ToolActions } from './ToolActions.tsx';
 
 // O rascunho fica guardado enquanto o app está aberto.
-const left = signal('');
-const right = signal('');
+const left = source();
+const right = source();
 const unordered = signal(false);
 
 const MAX_ROWS = 500;
 
-function problem(r: ParseResult | null): string | null {
-  if (!r || r.ok) return null;
-  return r.line ? `JSON inválido na linha ${r.line}, coluna ${r.column}: ${r.message}.` : `JSON inválido: ${r.message}`;
-}
-
 export function JsonCompare({ close }: { close: () => void }) {
   const [tab, setTab] = useState<'list' | 'side'>('list');
-  const first = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { first.current?.focus(); }, []);
-
-  const a = useMemo(() => (left.value.trim() ? parseJson(left.value) : null), [left.value]);
-  const b = useMemo(() => (right.value.trim() ? parseJson(right.value) : null), [right.value]);
+  const a = useMemo(() => (left.text.value.trim() ? parseJson(left.text.value) : null), [left.text.value]);
+  const b = useMemo(() => (right.text.value.trim() ? parseJson(right.text.value) : null), [right.text.value]);
   const opts = { unorderedArrays: unordered.value };
   const result = useMemo(() => {
     if (!a?.ok || !b?.ok) return null;
@@ -30,25 +23,17 @@ export function JsonCompare({ close }: { close: () => void }) {
     return { changes, markdown: changesToMarkdown(changes), a: canonical(a.value, opts, '  '), b: canonical(b.value, opts, '  ') };
   }, [a, b, unordered.value]);
 
-  const side = (label: string, aria: string, sig: typeof left, parsed: ParseResult | null, ref?: typeof first) => (
-    <div class="tool-side">
-      <span class="tool-label">{label}</span>
-      <textarea ref={ref} aria-label={aria} wrap="off" spellcheck={false} placeholder="Cole o JSON aqui." value={sig.value} onInput={(e) => { sig.value = e.currentTarget.value; }} />
-      {problem(parsed) && <p class="tool-err" role="alert">{problem(parsed)}</p>}
-    </div>
-  );
-
   return (
     <>
       <div class="tool-grid">
-        {side('A (original)', 'JSON A', left, a, first)}
-        {side('B (novo)', 'JSON B', right, b)}
+        <JsonSource src={left} label="A (original)" name="JSON A" error={problem(a)} autofocus />
+        <JsonSource src={right} label="B (novo)" name="JSON B" error={problem(b)} />
       </div>
 
       <div class="tool-opts">
         <label class="inline"><input type="checkbox" checked={unordered.value} onChange={(e) => { unordered.value = e.currentTarget.checked; }} />Ignorar a ordem dos itens dos arrays</label>
-        <button type="button" class="btn" onClick={() => { [left.value, right.value] = [right.value, left.value]; }}>Trocar A e B</button>
-        <button type="button" class="btn" disabled={!left.value && !right.value} onClick={() => { left.value = ''; right.value = ''; first.current?.focus(); }}>Limpar</button>
+        <button type="button" class="btn" onClick={() => swapSources(left, right)}>Trocar A e B</button>
+        <button type="button" class="btn" disabled={!left.text.value && !right.text.value} onClick={() => { clearSource(left); clearSource(right); }}>Limpar</button>
         {result && (
           <span class="seg" role="tablist">
             <button role="tab" aria-selected={tab === 'list'} class={tab === 'list' ? 'on' : ''} onClick={() => setTab('list')}>Diferenças</button>

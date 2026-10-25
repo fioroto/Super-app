@@ -589,7 +589,7 @@ describe('modo Documento: link, tabela, imagem e barra', () => {
       await page.getByRole('button', { name: '☑ Tarefas' }).click();
       expect((await snapshot(page)).text).toBe('- [ ] a');
       await setDoc(page, '|');
-      await page.getByRole('button', { name: 'Tabela' }).click();
+      await page.getByRole('button', { name: 'Tabela', exact: true }).click();
       const t = await snapshot(page);
       expect(t.text).toBe('| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n|  |  |  |\n');
       expect(t.marked).toContain('|  |  |  |⏎'.replace('|  |', '|')); // o cursor está na primeira célula do corpo

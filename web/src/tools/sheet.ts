@@ -101,3 +101,17 @@ export function toMarkdownTable(rows: string[][], opts: TableOptions): string {
   const rule = head.map((_, c) => (right[c] ? `${'-'.repeat(size[c]! - 1)}:` : '-'.repeat(size[c]!)));
   return [line(head), `| ${rule.join(' | ')} |`, ...body.map(line)].join('\n');
 }
+
+// Célula que começa com = + - @ vira fórmula ao colar no Excel; com apóstrofo na frente, fica texto.
+// Número negativo ou com sinal (-3, +5,2) continua número.
+const FORMULA = /^[=+\-@\t\r]/;
+const guard = (s: string) => (FORMULA.test(s) && !/^[-+]\d[\d.,]*%?$/.test(s) ? `'${s}` : s);
+
+/** O inverso de parseSheet: texto separado por Tab, que a planilha cola já em células. */
+export function toTsv(rows: string[][]): string {
+  const cell = (raw: string) => {
+    const s = guard(raw);
+    return /[\t\n\r"]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return rows.map((r) => r.map(cell).join('\t')).join('\n');
+}

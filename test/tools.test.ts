@@ -167,7 +167,7 @@ async function pasteSheet(page: Page, app: { base: string }, text: string) {
 describe('ferramentas na interface', () => {
   it('planilha: cola do jeito que a planilha copia, mostra a tabela e copia o Markdown', async () => {
     await withPage(browser, {}, async (page, app) => {
-      await openTool(page, 'Planilha → MD');
+      await openTool(page, 'Planilha → tabela');
       await pasteSheet(page, app, TSV);
 
       await expect.poll(() => page.getByRole('textbox', { name: 'Tabela Markdown' }).inputValue()).toBe(TABLE);
@@ -184,7 +184,7 @@ describe('ferramentas na interface', () => {
 
   it('planilha: as opções mudam o Markdown na hora', async () => {
     await withPage(browser, {}, async (page) => {
-      await openTool(page, 'Planilha → MD');
+      await openTool(page, 'Planilha → tabela');
       await page.getByLabel('Células da planilha').fill('a;b\nx;2');
       const out = page.getByRole('textbox', { name: 'Tabela Markdown' });
       await expect.poll(() => out.inputValue()).toBe('| a   |   b |\n| --- | --: |\n| x   |   2 |');
@@ -205,7 +205,7 @@ describe('ferramentas na interface', () => {
       await page.locator('.cm-content').click();
       await page.keyboard.press('Control+Home');
       await page.keyboard.press('End'); // fim de "Antes"
-      await openTool(page, 'Planilha → MD');
+      await openTool(page, 'Planilha → tabela');
       await pasteSheet(page, app, 'x\ty\n1\t2');
       await page.getByRole('button', { name: 'Inserir na nota' }).click();
 
@@ -217,7 +217,7 @@ describe('ferramentas na interface', () => {
 
   it('planilha: sem nota aberta não dá para inserir; salvar como nota cria o arquivo', async () => {
     await withPage(browser, {}, async (page, app) => {
-      await openTool(page, 'Planilha → MD');
+      await openTool(page, 'Planilha → tabela');
       await pasteSheet(page, app, TSV);
       await expect.poll(() => page.getByRole('textbox', { name: 'Tabela Markdown' }).inputValue()).toBe(TABLE);
       expect(await page.getByRole('button', { name: 'Inserir na nota' }).isDisabled()).toBe(true);

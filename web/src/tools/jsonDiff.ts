@@ -29,6 +29,12 @@ export function parseJson(text: string): ParseResult {
   }
 }
 
+/** A mensagem de erro para mostrar embaixo da caixa; null se o JSON é válido ou está vazio. */
+export function problem(r: ParseResult | null): string | null {
+  if (!r || r.ok) return null;
+  return r.line ? `JSON inválido na linha ${r.line}, coluna ${r.column}: ${r.message}.` : `JSON inválido: ${r.message}`;
+}
+
 /** Percorre o texto como o JSON manda e devolve o primeiro ponto em que ele deixa de valer. */
 function locateError(text: string): { pos: number; message: string } | null {
   let i = 0;

@@ -23,8 +23,9 @@ O app abre no navegador. Para abrir uma pasta direto: `iniciar.bat "C:\Notas"` o
 | Desenho livre | **+ Desenho** cria um desenho (Excalidraw). Salva `nome.excalidraw.md` e `nome.excalidraw.svg`. O botão **Desenho** da nota insere a imagem. |
 | Kanban | **+ Quadro** cria um quadro. Arraste cartões e colunas. Cartão aceita data `@{2026-11-03}` e `#tags`. O botão **Texto** mostra o Markdown cru. |
 | Histórico | **Histórico** lista versões anteriores, mostra a diferença e restaura. |
-| Comparar JSON | **Comparar JSON** (rodapé da barra lateral). Cole um JSON de cada lado. Lista o caminho de cada diferença (`$.user.tags[1]`), com valor, tipo e o que só existe de um lado. A ordem das chaves não conta; a dos itens de array conta, a menos que você marque para ignorar. Há também a visão **Lado a lado**. Erro de sintaxe aponta linha e coluna. |
-| Planilha → tabela | **Planilha → MD**. Copie as células no Excel, Google Planilhas ou LibreOffice e cole na janela: sai a tabela Markdown. Aceita células com quebra de linha e `\|`, e CSV com `;` ou `,`. Escolha se a primeira linha é cabeçalho. Colunas só de números ficam à direita. |
+| Comparar JSON | **Comparar JSON** (rodapé da barra lateral). Cole um JSON de cada lado, ou solte um arquivo `.json` em cima da caixa. Lista o caminho de cada diferença (`$.user.tags[1]`), com valor, tipo e o que só existe de um lado. A ordem das chaves não conta; a dos itens de array conta, a menos que você marque para ignorar. Há também a visão **Lado a lado**. Erro de sintaxe aponta linha e coluna. |
+| JSON → tabela | **JSON → tabela**. Cole o JSON, solte o arquivo na caixa ou use **Abrir arquivo…**. Em **Uma linha por**, escolha qual lista vira linha: `fundos` ou, um nível abaixo, `fundos → classes`, em que cada linha repete os campos do fundo. Objeto dentro de objeto vira coluna com ponto (`gestor.nome`). Marque as colunas que entram. Sai como tabela Markdown ou, com **Copiar para planilha**, como texto que o Excel cola em células. |
+| Planilha → tabela | **Planilha → tabela**. Copie as células no Excel, Google Planilhas ou LibreOffice e cole na janela: sai a tabela Markdown. Aceita células com quebra de linha e `\|`, e CSV com `;` ou `,`. Escolha se a primeira linha é cabeçalho. Colunas só de números ficam à direita. |
 | Exportar | **HTML** gera uma página única (diagramas e imagens embutidos). **PDF** abre a impressão do navegador. |
 | Outras ferramentas | Se o VS Code, o Obsidian ou outro programa mudar um arquivo aberto, o app atualiza. Se você também editou, ele pergunta qual versão manter. |
 
@@ -63,7 +64,9 @@ Tudo na pasta que você escolheu. A subpasta `.superapp/` guarda o histórico e 
 - No modo Documento, diagramas e tabelas dentro de listas ou citações aparecem como código (só os de primeiro nível viram desenho).
 - Um único parágrafo gigante (milhares de linhas seguidas, sem linha em branco, com muitos links) deixa o analisador de Markdown lento, em qualquer modo. Notas normais não sofrem.
 - Comparar JSON usa o `JSON.parse` do navegador: número inteiro acima de 9 007 199 254 740 991 perde dígitos, e chave repetida num objeto vale a última. Com "ignorar a ordem dos arrays", dois objetos parecidos mas não iguais aparecem como um removido e um adicionado, sem entrar no detalhe.
-- As duas ferramentas guardam o que você colou só até fechar o app.
+- JSON → tabela: no nível de baixo, um pai sem itens (fundo sem classe) não gera linha. Lista dentro de lista desce até 5 níveis. Arquivo de até 50 MB; acima de 2 MB, ele não aparece na caixa de texto, só o nome. A prévia mostra 200 linhas, a caixa de Markdown 2000; copiar e salvar levam todas.
+- Copiar para planilha põe um apóstrofo na frente de célula que começa com `=`, `+`, `-` ou `@` (menos número), para o Excel não executar como fórmula.
+- As ferramentas guardam o que você colou só até fechar o app.
 - Não tem busca no conteúdo das notas, `[[links]]` entre notas, nem sincronização entre máquinas.
 
 ## Visual

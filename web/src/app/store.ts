@@ -191,8 +191,8 @@ export async function reloadFromDisk(path: string): Promise<void> {
 /** Telas que carregam sob demanda: histórico de versões e comparação de textos. */
 export const historyFor = signal<string | null>(null);
 export const diffView = signal<{ title: string; left: string; right: string; leftLabel: string; rightLabel: string } | null>(null);
-/** Ferramentas avulsas (carregam sob demanda): comparar JSON e planilha para tabela Markdown. */
-export const tool = signal<'json' | 'sheet' | null>(null);
+/** Ferramentas avulsas (carregam sob demanda): comparar JSON, JSON para tabela e planilha para tabela Markdown. */
+export const tool = signal<'json' | 'table' | 'sheet' | null>(null);
 
 export function keepMine(path: string): void {
   const d = find(path);

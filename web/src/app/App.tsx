@@ -77,7 +77,8 @@ export function App() {
         <footer class="side-foot">
           <div class="side-foot-tools">
             <button onClick={() => (tool.value = 'json')} title="Comparar dois JSON pelo conteúdo">Comparar JSON</button>
-            <button onClick={() => (tool.value = 'sheet')} title="Transformar células copiadas de uma planilha em tabela Markdown">Planilha → MD</button>
+            <button onClick={() => (tool.value = 'table')} title="Transformar um JSON (colado ou arquivo arrastado) em tabela Markdown ou de planilha">JSON → tabela</button>
+            <button onClick={() => (tool.value = 'sheet')} title="Transformar células copiadas de uma planilha em tabela Markdown">Planilha → tabela</button>
           </div>
           <button onClick={openQuick}>Buscar (Ctrl+P)</button>
           <button onClick={cycleTheme}>{THEME_LABEL[theme.value]}</button>

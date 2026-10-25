@@ -20,7 +20,7 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 /** Copiar, inserir na nota aberta ou guardar numa nota nova: o resultado sempre acaba em Markdown. */
-export function ToolActions({ markdown, disabled, hint, close }: { markdown: string; disabled: boolean; hint: string; close: () => void }) {
+export function ToolActions({ markdown, tsv, disabled, hint, close }: { markdown: string; tsv?: string; disabled: boolean; hint: string; close: () => void }) {
   const [msg, setMsg] = useState('');
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const say = (m: string) => {
@@ -35,6 +35,7 @@ export function ToolActions({ markdown, disabled, hint, close }: { markdown: str
       <span class="muted" role="status">{msg || hint}</span>
       <button type="button" class="btn" disabled={disabled} onClick={() => void createNote(`${markdown}\n`, 'tabela').then((ok) => ok && close())}>Salvar como nota</button>
       <button type="button" class="btn" disabled={disabled || !canInsert} title={canInsert ? 'Colocar no cursor da nota aberta' : 'Abra uma nota para inserir'} onClick={() => { if (insertBlock(markdown)) close(); }}>Inserir na nota</button>
+      {tsv !== undefined && <button type="button" class="btn" disabled={disabled} title="Texto separado por Tab: colado na planilha, cai em células" onClick={() => void copyText(tsv).then((ok) => say(ok ? 'Copiado. Cole na planilha.' : 'Não consegui copiar.'))}>Copiar para planilha</button>}
       <button type="button" class="btn primary" disabled={disabled} onClick={() => void copyText(markdown).then((ok) => say(ok ? 'Copiado.' : 'Não consegui copiar.'))}>Copiar</button>
     </div>
   );
