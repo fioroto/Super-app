@@ -1,9 +1,10 @@
-export type Kind = 'md' | 'text' | 'image' | 'other';
+export type Kind = 'md' | 'text' | 'image' | 'canvas' | 'other';
 
 const IMAGE = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i;
 const TEXT = /\.(md|markdown|txt|json|ya?ml|csv|log)$/i;
 
 export function kindOf(path: string): Kind {
+  if (/\.excalidraw\.md$/i.test(path)) return 'canvas';
   if (/\.(md|markdown)$/i.test(path)) return 'md';
   if (IMAGE.test(path)) return 'image';
   if (TEXT.test(path)) return 'text';

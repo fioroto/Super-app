@@ -205,7 +205,7 @@ export async function startServer(opts: Options): Promise<Running> {
       case 'PUT /api/file': {
         const body = await readJson(req);
         const expected = body.hash === null || body.hash === undefined ? null : str(body.hash, 'hash');
-        const r = await needVault().write(str(body.path, 'path'), str(body.content, 'content'), expected);
+        const r = await needVault().write(str(body.path, 'path'), str(body.content, 'content'), expected, { force: body.force === true });
         return json(res, 200, r);
       }
       case 'DELETE /api/file': {
@@ -249,7 +249,8 @@ export async function startServer(opts: Options): Promise<Running> {
     if (path.relative(opts.webRoot, abs).startsWith('..')) throw new HttpError(404, 'não encontrado');
     const s = await stat(abs).catch(() => null);
     if (!s?.isFile()) throw new HttpError(404, 'não encontrado');
-    const hashed = rel.startsWith('assets/');
+    // Nomes com hash no arquivo nunca mudam de conteúdo: o navegador pode guardar para sempre.
+    const hashed = rel.startsWith('assets/') || rel.startsWith('excalidraw/fonts/');
     res.writeHead(200, {
       'content-type': mimeOf(abs), 'content-length': s.size,
       'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',

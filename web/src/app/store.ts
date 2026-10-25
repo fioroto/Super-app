@@ -2,6 +2,7 @@ import { computed, signal } from '@preact/signals';
 import { api, ApiError, type TreeNode, type VaultInfo } from '../api/client.ts';
 import { basename, dirname, join, kindOf, sanitizePath, type Kind } from './files.ts';
 import { ask, confirmBox } from './dialog.ts';
+import { emptyScene, serializeDrawing } from '../diagrams/canvas/excalidrawMd.ts';
 
 /** undefined = carregando; null = nenhuma pasta aberta. */
 export const vault = signal<VaultInfo | null | undefined>(undefined);
@@ -10,7 +11,16 @@ export const tree = signal<TreeNode | null>(null);
 export const error = signal<string | null>(null);
 export const selectedDir = signal('');
 export const mode = signal<'editor' | 'split' | 'preview'>('split');
-export const quickOpen = signal(false);
+export interface Picker {
+  title: string;
+  filter?: (path: string) => boolean;
+  onPick: (path: string) => void;
+}
+/** Seletor de arquivo por nome (Ctrl+P e "inserir desenho"). */
+export const picker = signal<Picker | null>(null);
+export const openQuick = (): void => {
+  picker.value = { title: 'Buscar arquivo pelo nome…', onPick: (p) => void openFile(p) };
+};
 
 export interface Doc {
   path: string;
@@ -65,10 +75,11 @@ export async function refreshTree(): Promise<void> {
 export async function openFile(path: string): Promise<void> {
   error.value = null;
   selectedDir.value = dirname(path);
-  if (find(path)) { activePath.value = path; return; }
+  if (find(path)) { await activate(path); return; }
   const kind = kindOf(path);
   try {
-    if (kind === 'md' || kind === 'text') {
+    await flushers.get(activePath.value ?? '')?.();
+    if (kind === 'md' || kind === 'text' || kind === 'canvas') {
       const f = await api.read(path);
       docs.value = [...docs.value, { path, kind, text: f.content, hash: f.hash, state: 'ok', rev: 0 }];
     } else {
@@ -80,7 +91,21 @@ export async function openFile(path: string): Promise<void> {
   }
 }
 
+/** Abas de desenho vivem num iframe: antes de sair delas, pede-se o último estado. */
+const flushers = new Map<string, () => Promise<void>>();
+export function registerFlusher(path: string, fn: () => Promise<void>): () => void {
+  flushers.set(path, fn);
+  return () => { if (flushers.get(path) === fn) flushers.delete(path); };
+}
+
+export async function activate(path: string): Promise<void> {
+  const cur = activePath.value;
+  if (cur && cur !== path) await flushers.get(cur)?.();
+  activePath.value = path;
+}
+
 export async function closeFile(path: string): Promise<void> {
+  await flushers.get(path)?.();
   await flush(path);
   const list = docs.value;
   const i = list.findIndex((d) => d.path === path);
@@ -155,7 +180,7 @@ function refreshTreeSoon(): Promise<void> | void {
 
 async function checkOpenDoc(path: string): Promise<void> {
   const d = find(path);
-  if (!d || (d.kind !== 'md' && d.kind !== 'text')) return;
+  if (!d || (d.kind !== 'md' && d.kind !== 'text' && d.kind !== 'canvas')) return;
   try {
     const f = await api.read(path);
     if (f.hash === d.hash) return; // eco do nosso próprio salvamento
@@ -186,6 +211,19 @@ export function connectEvents(): void {
   };
 }
 
+/** Grava um arquivo derivado (o .svg de um desenho) sem conferir conflito: ele é sempre refeito. */
+export async function saveDerived(path: string, content: string): Promise<void> {
+  try {
+    await api.write(path, content, null, true);
+    void refreshTreeSoon();
+  } catch (e) { fail(e); }
+}
+
+/** Abre um desenho que o app não conseguiu ler como texto comum. */
+export function asText(path: string): void {
+  patch(path, { kind: 'text', rev: (find(path)?.rev ?? 0) + 1 });
+}
+
 // ---------- criar, renomear, excluir ----------
 
 export async function newNote(): Promise<void> {
@@ -196,6 +234,21 @@ export async function newNote(): Promise<void> {
   const path = join(selectedDir.value, /\.[a-z0-9]+$/i.test(clean) ? clean : `${clean}.md`);
   try {
     await api.write(path, '', null);
+    await refreshTree();
+    await openFile(path);
+  } catch (e) {
+    fail(e instanceof ApiError && e.conflict ? new Error('Já existe um arquivo com esse nome.') : e);
+  }
+}
+
+export async function newDrawing(): Promise<void> {
+  const name = await ask('Nome do desenho', 'desenho');
+  if (!name) return;
+  const base = sanitizePath(name).replace(/(\.excalidraw)?(\.md)?$/i, '');
+  if (!base) return;
+  const path = join(selectedDir.value, `${base}.excalidraw.md`);
+  try {
+    await api.write(path, serializeDrawing(emptyScene()), null);
     await refreshTree();
     await openFile(path);
   } catch (e) {

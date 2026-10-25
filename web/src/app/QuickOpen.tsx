@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { basename, flatten } from './files.ts';
-import { openFile, quickOpen, tree } from './store.ts';
+import { picker, tree } from './store.ts';
 
 /** Todas as letras da busca, em ordem. Quanto mais coladas e mais perto do fim (nome), melhor. */
 function score(path: string, q: string): number {
@@ -22,7 +22,8 @@ export function QuickOpen() {
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
   const input = useRef<HTMLInputElement>(null);
-  const all = useMemo(() => (tree.value ? flatten(tree.value) : []), [tree.value]);
+  const cfg = picker.value!;
+  const all = useMemo(() => (tree.value ? flatten(tree.value).filter(cfg.filter ?? (() => true)) : []), [tree.value, cfg]);
   const results = useMemo(() => {
     const needle = q.toLowerCase().replace(/\s+/g, '');
     return all.map((p) => [p, score(p, needle)] as const).filter(([, s]) => s >= 0).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([p]) => p);
@@ -30,19 +31,19 @@ export function QuickOpen() {
   useEffect(() => input.current?.focus(), []);
   useEffect(() => setSel(0), [q]);
 
-  const close = () => { quickOpen.value = false; };
-  const pick = (p: string | undefined) => { if (p) { close(); void openFile(p); } };
+  const close = () => { picker.value = null; };
+  const pick = (p: string | undefined) => { if (p) { close(); cfg.onPick(p); } };
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') close();
     else if (e.key === 'ArrowDown') { e.preventDefault(); setSel(Math.min(sel + 1, results.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSel(Math.max(sel - 1, 0)); }
-    else if (e.key === 'Enter') pick(results[sel]);
+    else if (e.key === 'Enter') { e.preventDefault(); pick(results[sel]); }
   };
 
   return (
     <div class="overlay top" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div class="dialog quick" onKeyDown={onKey}>
-        <input ref={input} value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder="Buscar arquivo pelo nome…" spellcheck={false} />
+        <input ref={input} value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={cfg.title} spellcheck={false} />
         <ul>
           {results.map((p, i) => (
             <li key={p} class={i === sel ? 'sel' : ''} onMouseEnter={() => setSel(i)} onClick={() => pick(p)}>

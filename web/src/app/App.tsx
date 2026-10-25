@@ -2,13 +2,15 @@ import { useEffect } from 'preact/hooks';
 import { Editor } from '../editor/Editor.tsx';
 import { Preview } from '../preview/Preview.tsx';
 import { DiagramDialog, diagramDialog, openDiagramDialog } from '../diagrams/mermaid/DiagramDialog.tsx';
+import { Canvas } from '../diagrams/canvas/Canvas.tsx';
 import { Dialog } from './Dialog.tsx';
+import { insertDrawing } from './insert.ts';
 import { QuickOpen } from './QuickOpen.tsx';
 import { Tree } from './Tree.tsx';
 import { VaultPicker } from './VaultPicker.tsx';
 import { applyTheme, cycleTheme, theme } from './theme.ts';
 import {
-  active, activePath, boot, closeFile, docs, error, keepMine, mode, newFolder, newNote, quickOpen, save, takeDisk, tree, vault,
+  activate, active, activePath, boot, closeFile, docs, error, keepMine, mode, newDrawing, newFolder, newNote, openQuick, picker, save, takeDisk, tree, vault,
 } from './store.ts';
 import { api } from '../api/client.ts';
 
@@ -20,7 +22,7 @@ export function App() {
     applyTheme();
     boot().catch((e) => (error.value = e.message));
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') { e.preventDefault(); quickOpen.value = !quickOpen.value; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') { e.preventDefault(); if (picker.value) picker.value = null; else openQuick(); }
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); const p = activePath.value; if (p) void save(p); }
     };
     window.addEventListener('keydown', onKey);
@@ -39,12 +41,13 @@ export function App() {
           <strong title={vault.value.root}>{vault.value.name}</strong>
           <span class="side-tools">
             <button class="btn" onClick={newNote} title="Nova nota">+ Nota</button>
+            <button class="btn" onClick={newDrawing} title="Novo desenho livre">+ Desenho</button>
             <button class="btn" onClick={newFolder} title="Nova pasta">+ Pasta</button>
           </span>
         </header>
         {tree.value && <Tree root={tree.value} />}
         <footer class="side-foot">
-          <button onClick={() => (quickOpen.value = true)}>Buscar (Ctrl+P)</button>
+          <button onClick={openQuick}>Buscar (Ctrl+P)</button>
           <button onClick={cycleTheme}>{THEME_LABEL[theme.value]}</button>
         </footer>
       </aside>
@@ -52,7 +55,7 @@ export function App() {
       <section class="main">
         <div class="tabs" role="tablist">
           {docs.value.map((t) => (
-            <div key={t.path} role="tab" class={`tab${t.path === activePath.value ? ' active' : ''}`} onClick={() => (activePath.value = t.path)} title={t.path}>
+            <div key={t.path} role="tab" class={`tab${t.path === activePath.value ? ' active' : ''}`} onClick={() => void activate(t.path)} title={t.path}>
               <span>{t.path.slice(t.path.lastIndexOf('/') + 1)}</span>
               {t.state !== 'ok' && <i class={`dot ${t.state}`} />}
               <button title="Fechar" onClick={(e) => { e.stopPropagation(); void closeFile(t.path); }}>×</button>
@@ -64,7 +67,12 @@ export function App() {
           <>
             <header class="bar">
               <span class="muted">{d.path}</span>
-              {text && d.kind === 'md' && <button class="btn" onClick={openDiagramDialog} title="Inserir ou editar diagrama Mermaid">Diagrama</button>}
+              {text && d.kind === 'md' && (
+                <span class="tools">
+                  <button class="btn" onClick={openDiagramDialog} title="Inserir ou editar diagrama Mermaid">Diagrama</button>
+                  <button class="btn" onClick={insertDrawing} title="Inserir um desenho livre na nota">Desenho</button>
+                </span>
+              )}
               {text && d.kind === 'md' && (
                 <span class="seg">
                   {(['editor', 'split', 'preview'] as const).map((m) => (
@@ -89,6 +97,8 @@ export function App() {
                 <div class="pane-edit"><Editor path={d.path} text={d.text} rev={d.rev} /></div>
                 {d.kind === 'md' && mode.value !== 'editor' && <div class="pane-view"><Preview path={d.path} text={d.text} /></div>}
               </div>
+            ) : d.kind === 'canvas' ? (
+              <Canvas key={d.rev} path={d.path} text={d.text} />
             ) : d.kind === 'image' ? (
               <div class="imgview"><img src={api.rawUrl(d.path)} alt={d.path} /></div>
             ) : (
@@ -101,7 +111,7 @@ export function App() {
         {error.value && <p class="err" onClick={() => (error.value = null)}>{error.value}</p>}
       </section>
 
-      {quickOpen.value && <QuickOpen />}
+      {picker.value && <QuickOpen />}
       {diagramDialog.value && <DiagramDialog key={diagramDialog.value.from ?? -1} />}
       <Dialog />
     </div>

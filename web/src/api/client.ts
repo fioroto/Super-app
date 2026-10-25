@@ -41,8 +41,8 @@ export const api = {
   openVault: (path: string) => call<{ vault: VaultInfo }>('POST', '/api/vault', { path }),
   tree: () => call<TreeNode>('GET', '/api/tree'),
   read: (path: string) => call<FileData>('GET', `/api/file?path=${enc(path)}`),
-  write: (path: string, content: string, hash: string | null) =>
-    call<{ hash: string; mtime: number }>('PUT', '/api/file', { path, content, hash }),
+  write: (path: string, content: string, hash: string | null, force = false) =>
+    call<{ hash: string; mtime: number }>('PUT', '/api/file', { path, content, hash, force }),
   remove: (path: string) => call<{ trash: string }>('DELETE', `/api/file?path=${enc(path)}`),
   rename: (from: string, to: string) => call<{ ok: true }>('POST', '/api/rename', { from, to }),
   mkdir: (path: string) => call<{ ok: true }>('POST', '/api/mkdir', { path }),

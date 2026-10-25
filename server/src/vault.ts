@@ -132,8 +132,14 @@ export class Vault extends EventEmitter<{ saved: [SavedEvent]; removing: [string
   /**
    * Grava de forma atômica. `expectedHash` é o hash que o cliente viu:
    * string = precisa bater com o disco; null = o arquivo não pode existir ainda.
+   * `force` ignora a conferência: serve para arquivos derivados (o .svg de um desenho).
    */
-  async write(rel: string, content: string | Buffer, expectedHash: string | null): Promise<{ hash: string; mtime: number }> {
+  async write(
+    rel: string,
+    content: string | Buffer,
+    expectedHash: string | null,
+    opts: { force?: boolean } = {},
+  ): Promise<{ hash: string; mtime: number }> {
     const abs = await this.abs(rel);
     let previous: Buffer | null = null;
     try {
@@ -142,7 +148,7 @@ export class Vault extends EventEmitter<{ saved: [SavedEvent]; removing: [string
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     }
     const currentHash = previous ? hashOf(previous) : null;
-    if (currentHash !== expectedHash) throw new ConflictError(currentHash);
+    if (!opts.force && currentHash !== expectedHash) throw new ConflictError(currentHash);
 
     const data = typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
     if (previous && previous.equals(data)) return { hash: currentHash!, mtime: Math.floor((await stat(abs)).mtimeMs) };
